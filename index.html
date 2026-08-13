@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0D0C">
+  <meta name="description" content="NEON ENGLISH V0.2 — Apprentissage de l'anglais par associations, carte mentale interactive, répétition espacée SRS et rappel actif.">
+  
+  <!-- iOS Safari PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEON ENGLISH">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  
+  <!-- Web App Manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <title>NEON ENGLISH V0.2</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">N</span>
+        <div><b>NEON ENGLISH</b><small>V0.2 · Learn by connecting</small></div>
+      </div>
+      <div class="topbar-actions">
+        <button id="srsDueBtn" class="neon-pill-btn" data-screen="srs-screen">⚡ SRS <span id="srsDueBadge" class="badge">0</span></button>
+        <button id="openImportBtn" class="icon-btn" title="Importer/Exporter du vocabulaire">📥</button>
+        <button id="installBtn" class="ghost hidden">＋ Installer</button>
+        <button id="resetBtn" class="icon-btn" title="Réinitialiser la progression">↻</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- HOME SCREEN -->
+      <section id="home" class="screen active">
+        <div class="hero">
+          <div class="eyebrow">YOUR ENGLISH UNIVERSE · V0.2</div>
+          <h1>Make the word <span>stick.</span></h1>
+          <p>Associations → Carte Mentale → SRS → Storytelling → Production.</p>
+        </div>
+
+        <div class="brain-card">
+          <div>
+            <span class="label">COMMENT EST TON CERVEAU ?</span>
+            <h2 id="modeTitle">🟡 Restless</h2>
+          </div>
+          <div class="modes">
+            <button data-mode="focused">🟢 Focused</button>
+            <button data-mode="restless" class="selected">🟡 Restless</button>
+            <button data-mode="overloaded">🔴 Overloaded</button>
+            <button data-mode="tired">🔵 Tired</button>
+          </div>
+        </div>
+
+        <div class="main-actions">
+          <button class="action-card primary" data-screen="universe">
+            <span class="action-icon">⚡</span>
+            <span><b>CONTINUE</b><small>Word Universe · Explore vocabulary</small></span>
+            <span>›</span>
+          </button>
+
+          <div class="grid-actions">
+            <button class="action-card" data-screen="mindmap-screen">
+              <span class="action-icon">🧠</span>
+              <span><b>MIND MAP</b><small>Carte mentale 2D interactive</small></span>
+            </button>
+            <button class="action-card" data-screen="srs-screen">
+              <span class="action-icon">🔄</span>
+              <span><b>SPACED REPETITION</b><small>Révision intelligente (SM-2)</small></span>
+            </button>
+            <button class="action-card" data-screen="blurting">
+              <span class="action-icon">🔥</span>
+              <span><b>BLURTING</b><small>Rappel actif sans regarder</small></span>
+            </button>
+            <button class="action-card" data-screen="hunt">
+              <span class="action-icon">🎮</span>
+              <span><b>WORD HUNT</b><small>Challenge réflexe rapide</small></span>
+            </button>
+            <button class="action-card" data-screen="story-screen">
+              <span class="action-icon">🎭</span>
+              <span><b>STORY CREATOR</b><small>Générateur de récits</small></span>
+            </button>
+            <button class="action-card" data-screen="analytics-screen">
+              <span class="action-icon">📊</span>
+              <span><b>ANALYTICS</b><small>Niveaux L1-L4 & erreurs</small></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div><strong id="xp">0</strong><small>XP</small></div>
+          <div><strong id="mastered">0</strong><small>AUTOMATICITY (L4)</small></div>
+          <div><strong id="streak">1</strong><small>MOMENTUM STREAK</small></div>
+        </div>
+      </section>
+
+      <!-- UNIVERSE SCREEN -->
+      <section id="universe" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">WORD UNIVERSE</span>
+            <h2 id="wordTitle">THREAT</h2>
+          </div>
+          <div class="head-right">
+            <span id="wordStageBadge" class="stage-pill">L1 Recognition</span>
+            <button id="nextWord" class="neon-mini">NEXT →</button>
+          </div>
+        </div>
+
+        <div id="wordCard" class="word-card"></div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="memory">🧠 Memory</button>
+          <button class="tab" data-tab="links">🔗 Links</button>
+          <button class="tab" data-tab="story">🎭 Story</button>
+          <button class="tab" data-tab="speak">🗣️ Speak</button>
+        </div>
+        <div id="tabContent"></div>
+
+        <div class="srs-grade-bar">
+          <span class="label">ÉVALUE TA MAÎTRISE (SRS) :</span>
+          <div class="grade-btns">
+            <button onclick="gradeCurrentWord(1)" class="grade-btn g1">🔴 Again (1d)</button>
+            <button onclick="gradeCurrentWord(2)" class="grade-btn g2">🟠 Hard</button>
+            <button onclick="gradeCurrentWord(3)" class="grade-btn g3">🟡 Good</button>
+            <button onclick="gradeCurrentWord(4)" class="grade-btn g4">🟢 Easy</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIND MAP SCREEN -->
+      <section id="mindmap-screen" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">INTERACTIVE NETWORK</span>
+            <h2>NEON MIND MAP</h2>
+          </div>
+          <div class="head-right">
+            <select id="mindmapWordSelect" class="neon-select"></select>
+            <button id="resetMindmapView" class="neon-mini">🔄 Center</button>
+          </div>
+        </div>
+
+        <div class="canvas-container">
+          <canvas id="mindmapCanvas"></canvas>
+          <div id="mindmapInfo" class="mindmap-info-box">
+            <span class="muted">Clique ou glisse n'importe quel nœud pour explorer le réseau sémantique.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SRS PRACTICE SCREEN -->
+      <section id="srs-screen" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">SPACED REPETITION</span>
+            <h2>SRS REVIEW DECK</h2>
+          </div>
+        </div>
+
+        <div class="srs-card">
+          <div id="srsCardInner" class="srs-card-content">
+            <!-- Dynamic SRS Flashcard -->
+          </div>
+        </div>
+      </section>
+
+      <!-- BLURTING SCREEN -->
+      <section id="blurting" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">ACTIVE RECALL</span>
+            <h2>BLURT</h2>
+          </div>
+        </div>
+        <div class="blurting-card">
+          <span class="label">WITHOUT LOOKING</span>
+          <h2 id="blurtWord">GET</h2>
+          <p>Écris tout ce que tu connais sur ce mot : sens, collocations, synonymes, exemples…</p>
+          <div class="timer" id="timer">60</div>
+          <textarea id="blurtInput" placeholder="Tape le sens, les collocations ou un exemple ici..."></textarea>
+          <div class="row">
+            <button id="startBlurt" class="primary-btn">▶ Commencer</button>
+            <button id="checkBlurt" class="secondary-btn">✓ Vérifier</button>
+          </div>
+          <div id="blurtResult" class="result hidden"></div>
+        </div>
+      </section>
+
+      <!-- WORD HUNT SCREEN -->
+      <section id="hunt" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">MICRO-CHALLENGE</span>
+            <h2>WORD HUNT</h2>
+          </div>
+        </div>
+        <div class="hunt-card">
+          <div class="hunt-orb">?</div>
+          <span class="label">TROUVE LE MOT</span>
+          <h2 id="huntQuestion"></h2>
+          <div id="huntChoices" class="choices"></div>
+          <div id="huntFeedback" class="feedback hidden"></div>
+        </div>
+      </section>
+
+      <!-- STORY GENERATOR SCREEN -->
+      <section id="story-screen" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">STORYTELLING</span>
+            <h2>STORY CREATOR</h2>
+          </div>
+        </div>
+        <div class="story-card">
+          <p class="muted">Sélectionne de 1 à 3 mots pour générer un récit contextuel original :</p>
+          <div id="storyWordPickers" class="story-pickers"></div>
+          <div class="row" style="margin-top:15px">
+            <button id="generateStoryBtn" class="primary-btn">✨ Générer l'histoire</button>
+            <button id="randomStoryBtn" class="secondary-btn">🎲 Combo Aléatoire</button>
+          </div>
+          <div id="storyOutput" class="story-output hidden"></div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS SCREEN -->
+      <section id="analytics-screen" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">PROGRESS & ERRORS</span>
+            <h2>ANALYTICS DASHBOARD</h2>
+          </div>
+        </div>
+        <div id="analyticsContent" class="analytics-wrapper"></div>
+      </section>
+    </main>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+      <button data-screen="home" class="nav active">⌂<span>Home</span></button>
+      <button data-screen="universe" class="nav">✦<span>Universe</span></button>
+      <button data-screen="mindmap-screen" class="nav">🧠<span>Map</span></button>
+      <button data-screen="srs-screen" class="nav">🔄<span>SRS</span></button>
+      <button data-screen="blurting" class="nav">🔥<span>Blurt</span></button>
+      <button data-screen="hunt" class="nav">🎮<span>Hunt</span></button>
+      <button data-screen="analytics-screen" class="nav">📊<span>Stats</span></button>
+    </nav>
+  </div>
+
+  <!-- IMPORTER / EXPORTER MODAL -->
+  <div id="importerModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📥 Import / Export Vocabulaire</h3>
+        <button id="closeImportBtn" class="icon-btn">✕</button>
+      </div>
+      <p class="muted" style="font-size:13px">
+        Colle du texte sous forme <code>MOT | Signification | Hook | Synonymes | Collocations</code> ou du JSON :
+      </p>
+      <textarea id="importInput" placeholder="EXEMPLE:&#10;BENCHMARK | Référence | Marque sur un banc | standard, reference | benchmark index, outperform"></textarea>
+      <div class="modal-actions">
+        <button id="doImportBtn" class="primary-btn">⚡ Importer dans NEON</button>
+        <button id="doExportBtn" class="secondary-btn">📤 Exporter en JSON</button>
+      </div>
+      <div id="importFeedback" class="feedback hidden"></div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="data/vocabulary.js"></script>
+  <script src="srs.js"></script>
+  <script src="mindmap.js"></script>
+  <script src="story.js"></script>
+  <script src="importer.js"></script>
+  <script src="analytics.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
