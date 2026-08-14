@@ -1,15 +1,279 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ff4d1c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="NEON ITALIANO"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css"><title>NEON ITALIANO v1.8</title><style>.topbar-actions{display:flex;align-items:center;gap:7px}.neon-pill-btn,.icon-btn,.ghost{border:1px solid #ff4d1c;background:rgba(255,77,28,.08);color:#fff;border-radius:12px;padding:8px 10px;font:inherit;cursor:pointer}.icon-btn{min-width:38px}.ghost{color:#ffb49d}.hidden{display:none!important}.badge{display:inline-flex;min-width:20px;justify-content:center;border-radius:99px;background:#ff4d1c;color:#fff;font-size:11px;padding:2px 5px}.modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:18px}.modal-card{width:min(680px,100%);max-height:90vh;overflow:auto;background:#111;border:1px solid #ff4d1c;border-radius:20px;padding:18px;box-shadow:0 0 40px rgba(255,77,28,.2)}.modal-head{display:flex;justify-content:space-between;align-items:center}.modal-card textarea{width:100%;min-height:180px;box-sizing:border-box;background:#080808;color:#fff;border:1px solid #333;border-radius:12px;padding:12px;margin:12px 0}.modal-actions{display:flex;gap:8px;flex-wrap:wrap}.bottom-nav{left:0;right:0;width:100%;max-width:100vw;box-sizing:border-box;padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right));padding-bottom:max(7px,env(safe-area-inset-bottom));overflow:hidden}.bottom-nav button{flex:1 1 0;width:0;min-width:0;max-width:none;box-sizing:border-box;padding-left:0;padding-right:0;overflow:hidden}.bottom-nav button small{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(8px,2.4vw,10px);line-height:1.15}.app{padding-bottom:calc(95px + env(safe-area-inset-bottom))}@media(max-width:390px){.bottom-nav{padding-left:3px;padding-right:3px}.bottom-nav button small{font-size:8px}.topbar-actions{gap:3px}.neon-pill-btn{padding:7px 6px}.icon-btn{min-width:34px;padding:7px 6px}}
-</style></head><body><div class="app"><header class="topbar"><div class="brand"><div class="logo">N</div><div><b>NEON<br>ITALIANO</b><small>A2 → B2 · Impara collegando</small></div></div><div class="topbar-actions"><button id="srsDueBtn" class="neon-pill-btn" title="Révisions SRS">⚡ SRS <span id="due" class="badge">0</span></button><button id="openImportBtn" class="icon-btn" title="Importer / Exporter le vocabulaire">📥</button><button id="installBtn" class="ghost hidden">＋ Installer</button><button id="resetBtn" class="icon-btn" title="Réinitialiser la progression">↻</button></div></header><main>
-<section id="home" class="screen active"><div class="eyebrow">IL TUO UNIVERSO ITALIANO · V1.8</div><h1>Fai <em>restare</em><br>le parole.</h1><p class="lead">Associations → Mind Map → SRS → Storytelling → Production → Shadowing.</p><div class="brain"><span>🧠</span><div><small>COME TI SENTI OGGI?</small><b id="moodLabel">Pronto</b></div><div class="moods"><button class="mood active" data-mood="pronto">🟢 Pronto</button><button class="mood" data-mood="distratto">🟡 Distratto</button><button class="mood" data-mood="fatigue">🔵 Stanco</button></div></div><button class="continue" data-go="learn">⚡ <div><b>CONTINUA</b><small>Sessione adaptée à ton niveau · 10–20 min</small></div><strong>›</strong></button><div class="grid"><button data-go="learn">🇮🇹 <b>PAROLE</b><small>Vocabulaire actif</small></button><button data-go="map">🧠 <b>MIND MAP</b><small>Connexions</small></button><button data-go="srs">🔄 <b>SRS</b><small>Révisions</small></button><button data-go="blurt">🔥 <b>BLURTING</b><small>Rappel actif</small></button><button data-go="hunt">🎮 <b>HUNT</b><small>Défi rapide</small></button><button data-go="story">🎭 <b>STORIA</b><small>Contexte</small></button></div><div class="stats"><div><b id="xp">0</b><small>XP</small></div><div><b id="known">0</b><small>MOTS ACTIFS</small></div><div><b id="streak">1</b><small>JOURS</small></div></div></section>
-<section id="learn" class="screen"><div class="top"><button data-go="home">←</button><div><span>PAROLA · A2→B2</span><h2 id="word"></h2></div><button id="next">NEXT →</button></div><article class="card" id="card"></article><div class="tabs"><button class="active" data-tab="memory">🧠 Mémoire</button><button data-tab="links">🔗 Liens</button><button data-tab="story">🎭 Storia</button><button data-tab="speak">🔊 Dire</button></div><div id="content"></div><div class="grade"><small>Comment maîtrises-tu ce mot ?</small><div><button data-grade="1">🔴 Encore</button><button data-grade="2">🟠 Difficile</button><button data-grade="3">🟡 Bien</button><button data-grade="4">🟢 Facile</button></div></div></section>
-<section id="map" class="screen"><div class="top"><button data-go="home">←</button><div><span>RETE SEMANTICA</span><h2>MIND MAP</h2></div></div><select id="mapWord"></select><div class="mapbox" id="mapbox"></div><p class="hint">Clique ou touche un nœud pour explorer les connexions.</p></section>
-<section id="srs" class="screen"><div class="top"><button data-go="home">←</button><div><span>RIPASSO INTELLIGENTE</span><h2>SRS</h2></div><div class="panel"><div class="big-number" id="srsDue">0</div><h3>cartes à revoir</h3><p>Les mots difficiles reviennent plus vite. Les mots maîtrisés s'espacent progressivement.</p><button class="continue" data-go="learn">▶ COMMENCER LA RÉVISION</button></div></section>
-<section id="blurt" class="screen"><div class="top"><button data-go="home">←</button><div><span>RICHIAMO ATTIVO</span><h2>BLURTING</h2></div></div><div class="panel center"><span>NE REGARDE PAS LA RÉPONSE</span><h1 id="blurtWord"></h1><p>Écris tout ce que tu sais : traduction, collocations, phrase, synonymes, formes...</p><textarea id="blurtInput" placeholder="Écris en français ou en italien..."></textarea><button class="continue" id="blurtCheck">✓ VÉRIFIER</button><div id="blurtResult"></div></div></section>
-<section id="hunt" class="screen"><div class="top"><button data-go="home">←</button><div><span>GIOCO RAPIDO</span><h2>WORD HUNT</h2></div></div><div class="panel center"><span>CHOISIS LA BONNE RÉPONSE</span><h2 id="huntQuestion"></h2><div id="huntChoices" class="choices"></div><div id="huntFeedback"></div></div></section>
-<section id="story" class="screen"><div class="top"><button data-go="home">←</button><div><span>STORYTELLING</span><h2>UNA STORIA</h2></div></div><div class="panel"><p>Lis, écoute, puis raconte l'histoire avec tes propres mots.</p><div id="storyText"></div><button class="continue" id="storySpeak">🔊 ÉCOUTER</button></div></section>
-<section id="statsScreen" class="screen"><div class="top"><button data-go="home">←</button><div><span>PROGRESSI</span><h2>STATISTICHE</h2></div></div><div class="panel"><h3 id="statsTitle"></h3><div class="bar"><i id="bar"></i></div><p id="statsText"></p><hr><p>🎯 Objectif recommandé : 10–20 minutes par jour, avec production orale chaque jour.</p></div></section>
-</main><nav class="bottom-nav"><button data-go="home" class="active">⌂<small>Home</small></button><button data-go="learn">✦<small>Parole</small></button><button data-go="map">🧠<small>Map</small></button><button data-go="srs">🔄<small>SRS</small></button><button data-go="blurt">🔥<small>Blurt</small></button><button data-go="hunt">🎮<small>Hunt</small></button><button data-go="statsScreen">📊<small>Stats</small></button></nav></div>
-<div id="importerModal" class="modal-overlay hidden"><div class="modal-card"><div class="modal-head"><h3>📥 Import / Export Vocabulaire</h3><button id="closeImportBtn" class="icon-btn">✕</button></div><p class="hint">Ajoute une fiche sous la forme <code>MOT | Traduction | Hook | Synonymes | Collocations | Exemple</code>, une par ligne, ou colle un JSON exporté.</p><textarea id="importInput" placeholder="SBROGLIARSI | se débrouiller / se sortir d'une situation | Imagine... | cavarsela | sbrigarsi, arrangiarsi | Devo sbrigarmi."></textarea><div class="modal-actions"><button id="doImportBtn" class="continue">⚡ IMPORTER</button><button id="doExportBtn" class="secondary-btn">📤 EXPORTER JSON</button></div><div id="importFeedback" class="feedback hidden"></div></div></div>
-<script src="vocabulary.js"></script><script>(function(){const CUSTOM='neonItaliano_customVocab_v1';try{const c=JSON.parse(localStorage.getItem(CUSTOM)||'[]');if(Array.isArray(c)&&c.length)window.ITALIANO_VOCAB=[...(window.ITALIANO_VOCAB||[]),...c]}catch(e){}let deferred=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;document.getElementById('installBtn')?.classList.remove('hidden')});const $=id=>document.getElementById(id),modal=$('importerModal'),input=$('importInput'),feedback=$('importFeedback');$('srsDueBtn')?.addEventListener('click',()=>document.querySelector('[data-go="srs"]')?.click());$('openImportBtn')?.addEventListener('click',()=>modal.classList.remove('hidden'));$('closeImportBtn')?.addEventListener('click',()=>modal.classList.add('hidden'));$('installBtn')?.addEventListener('click',async()=>{if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;$('installBtn').classList.add('hidden')}else alert('Chrome ne propose pas encore l’installation. Utilise ⋮ → Ajouter à l’écran d’accueil.')});$('resetBtn')?.addEventListener('click',()=>{if(confirm('Réinitialiser toute la progression SRS, XP, Blurting et statistiques ? Le vocabulaire personnalisé sera conservé.')){localStorage.removeItem('neonItaliano_v1');location.reload()}});$('doExportBtn')?.addEventListener('click',()=>{const base=window.ITALIANO_VOCAB||[],blob=new Blob([JSON.stringify(base,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='neon-italiano-vocabulaire.json';a.click();URL.revokeObjectURL(a.href);feedback.classList.remove('hidden');feedback.textContent='📤 Export créé : '+base.length+' fiches.'});$('doImportBtn')?.addEventListener('click',()=>{try{const raw=input.value.trim();if(!raw)throw Error('Ajoute du contenu.');let arr;if(raw[0]==='[')arr=JSON.parse(raw);else arr=raw.split(/\n+/).filter(Boolean).map(line=>{const p=line.split('|').map(x=>x.trim());return{word:p[0],translation:p[1]||'',hook:p[2]||'Associe ce mot à une image forte.',synonyms:p[3]||'',antonyms:'',collocations:p[4]||'',example:p[5]||'',exampleFr:'',story:p[5]||'',storyFr:'',phonetic:'',level:'B1'}});if(!Array.isArray(arr)||!arr.length)throw Error('Format vide.');const clean=arr.filter(x=>x.word&&x.translation),old=JSON.parse(localStorage.getItem(CUSTOM)||'[]'),map=new Map([...old,...clean].map(x=>[String(x.word).toUpperCase(),x]));localStorage.setItem(CUSTOM,JSON.stringify([...map.values()]));feedback.classList.remove('hidden');feedback.textContent='⚡ '+clean.length+' fiche(s) importée(s). Recharge l’application pour les activer.'}catch(e){feedback.classList.remove('hidden');feedback.textContent='❌ '+e.message}})})();</script><script src="app.js"></script><script>
-(()=>{const KEY='neonItaliano_v1',$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const speak=(t,r=.88)=>{if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='it-IT';u.rate=r;speechSynthesis.speak(u)};const st=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}};const save=(fn)=>{const s=st(),i=Number(s.current||0);fn(s,i);localStorage.setItem(KEY,JSON.stringify(s))};function render(){const v=window.ITALIANO_VOCAB||[],s=st(),i=Number(s.current||0)%Math.max(1,v.length),w=v[i]||{},c=$('#content');if(!c)return;c.innerHTML=`<div class="panel"><b>🗣️ SHADOWING ITALIANO</b><p class="hint">Écoute → répète en même temps → répète seul → crée ta propre phrase.</p><div class="shadow-phrase"><span>🇮🇹 PHRASE MODÈLE</span><h3>${esc(w.example||w.word||'')}</h3><small>🇫🇷 ${esc(w.exampleFr||w.translation||'')}</small></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="continue" id="shListen">🔊 ÉCOUTER</button><button class="secondary-btn" id="shSlow">🐢 LENT</button><button class="secondary-btn" id="shNormal">▶ NORMAL</button><button class="secondary-btn" id="shFast">⚡ RAPIDE</button></div><div class="info"><div>① Écoute</div><div>② Répète ×3</div><div>③ Sans regarder</div><div>④ Ta phrase</div></div><button class="continue" id="shDone">✓ J’AI FAIT LE SHADOWING</button><button class="continue" id="shProd" style="margin-top:8px">✓ J’AI PRODUIT MA PHRASE</button><p class="hint" id="shStatus"></p></div>`;$('#shListen')?.addEventListener('click',()=>speak(w.example));$('#shSlow')?.addEventListener('click',()=>speak(w.example,.68));$('#shNormal')?.addEventListener('click',()=>speak(w.example,.88));$('#shFast')?.addEventListener('click',()=>speak(w.example,1.05));$('#shDone')?.addEventListener('click',()=>save((x,j)=>{x.signals=x.signals||{};x.signals[j]=x.signals[j]||{blurt:0,production:0,story:0};x.signals[j].shadowing=Number(x.signals[j].shadowing||0)+1;x.stats={...(x.stats||{}),shadowing:Number(x.stats?.shadowing||0)+1};x.xp=Number(x.xp||0)+12;$('#shStatus').textContent='🔥 Shadowing enregistré.'}));$('#shProd')?.addEventListener('click',()=>save((x,j)=>{x.signals=x.signals||{};x.signals[j]=x.signals[j]||{blurt:0,production:0,story:0};x.signals[j].production=Number(x.signals[j].production||0)+1;x.stats={...(x.stats||{}),productions:Number(x.stats?.productions||0)+1};x.xp=Number(x.xp||0)+10;$('#shStatus').textContent='🗣️ Production enregistrée.'}))}document.addEventListener('DOMContentLoaded',()=>document.addEventListener('click',e=>{if(e.target.closest('[data-tab="speak"]'))setTimeout(render,0)}));})();</script><script>if('serviceWorker'in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#06100d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEON ITALIANO">
+  <link rel="manifest" href="manifest.webmanifest?v=1.9.3">
+  <link rel="stylesheet" href="styles.css?v=1.9.3">
+  <title>NEON ITALIANO v1.9.3</title>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">N</div>
+        <div>
+          <b>NEON<br>ITALIANO</b>
+          <small>A2 → B2 · Impara collegando</small>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="srsDueBtn" class="neon-pill-btn" title="Révisions SRS">⚡ SRS <span id="due" class="badge">0</span></button>
+        <button id="openImportBtn" class="icon-btn" title="Importer / Exporter le vocabulaire">📥</button>
+        <button id="installBtn" class="ghost hidden">＋ Installer</button>
+        <button id="resetBtn" class="icon-btn" title="Réinitialiser la progression">↻</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- HOME SCREEN -->
+      <section id="home" class="screen active">
+        <div class="eyebrow">IL TUO UNIVERSO ITALIANO · V1.9.3</div>
+        <h1>Fai <em>restare</em><br>le parole.</h1>
+        <p class="lead">Associations → Mind Map → SRS → Storytelling → Production → Shadowing.</p>
+
+        <div class="brain">
+          <span>🧠</span>
+          <div>
+            <small>COME TI SENTI OGGI?</small>
+            <b id="moodLabel">Pronto</b>
+          </div>
+          <div class="moods">
+            <button class="mood active" data-mood="pronto">🟢 Pronto</button>
+            <button class="mood" data-mood="distratto">🟡 Distratto</button>
+            <button class="mood" data-mood="fatigue">🔵 Stanco</button>
+          </div>
+        </div>
+
+        <button class="continue" data-go="learn">
+          <span>⚡</span>
+          <div>
+            <b>CONTINUA</b>
+            <small>Sessione adaptée à ton niveau · 10–20 min</small>
+          </div>
+          <strong>›</strong>
+        </button>
+
+        <div class="grid">
+          <button data-go="learn">
+            <span>🇮🇹</span>
+            <b>PAROLE</b>
+            <small>Vocabulaire actif</small>
+          </button>
+          <button data-go="map">
+            <span>🧠</span>
+            <b>MIND MAP</b>
+            <small>Réseau animé interactif</small>
+          </button>
+          <button data-go="srs">
+            <span>🔄</span>
+            <b>SRS</b>
+            <small>Révisions intelligentes</small>
+          </button>
+          <button data-go="blurt">
+            <span>🔥</span>
+            <b>BLURTING</b>
+            <small>Rappel actif</small>
+          </button>
+          <button data-go="hunt">
+            <span>🎮</span>
+            <b>HUNT</b>
+            <small>Défi réflexe</small>
+          </button>
+          <button data-go="story">
+            <span>🎭</span>
+            <b>STORIA</b>
+            <small>Contexte & récits</small>
+          </button>
+        </div>
+
+        <div class="stats">
+          <div><b id="xp">0</b><small>XP</small></div>
+          <div><b id="known">0</b><small>MOTS ACTIFS</small></div>
+          <div><b id="streak">1</b><small>JOURS STREAK</small></div>
+        </div>
+      </section>
+
+      <!-- LEARN / WORD SCREEN -->
+      <section id="learn" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>PAROLA · A2→B2</span>
+            <h2 id="word"></h2>
+          </div>
+          <div class="head-right">
+            <button id="next" class="neon-mini">NEXT →</button>
+          </div>
+        </div>
+
+        <article class="card" id="card"></article>
+
+        <div class="tabs">
+          <button class="active" data-tab="memory">🧠 Mémoire</button>
+          <button data-tab="links">🔗 Liens</button>
+          <button data-tab="story">🎭 Storia</button>
+          <button data-tab="speak">🗣️ Dire</button>
+        </div>
+        <div id="content"></div>
+
+        <div class="grade">
+          <small>Comment maîtrises-tu ce mot ? (SRS)</small>
+          <div>
+            <button data-grade="1">🔴 Encore</button>
+            <button data-grade="2">🟠 Difficile</button>
+            <button data-grade="3">🟡 Bien</button>
+            <button data-grade="4">🟢 Facile</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIND MAP SCREEN (2D INTERACTIVE CANVAS) -->
+      <section id="map" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>RETE SEMANTICA</span>
+            <h2>MIND MAP</h2>
+          </div>
+          <div class="head-right">
+            <select id="mapWord" class="neon-select"></select>
+            <button id="resetMindmapView" class="neon-mini">🔄 Centra</button>
+          </div>
+        </div>
+
+        <div class="canvas-container">
+          <canvas id="mindmapCanvas"></canvas>
+          <div id="mindmapInfo" class="mindmap-info-box">
+            <span class="hint">Tocca o trascina qualsiasi nodo per esplorare la rete semantica.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SRS SCREEN -->
+      <section id="srs" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>RIPASSO INTELLIGENTE</span>
+            <h2>SRS</h2>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="big-number" id="srsDue">0</div>
+          <h3>cartes à revoir</h3>
+          <p>Les mots difficiles reviennent plus vite. Les mots maîtrisés s'espacent progressivement.</p>
+          <button class="continue" data-go="learn">▶ COMMENCER LA RÉVISION</button>
+        </div>
+      </section>
+
+      <!-- BLURTING SCREEN -->
+      <section id="blurt" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>RICHIAMO ATTIVO</span>
+            <h2>BLURTING</h2>
+          </div>
+        </div>
+        <div class="panel center">
+          <span>NE REGARDE PAS LA RÉPONSE</span>
+          <h1 id="blurtWord"></h1>
+          <p>Écris tout ce que tu sais : traduction, collocations, phrase, synonymes, formes...</p>
+          <textarea id="blurtInput" placeholder="Écris en français ou en italien..."></textarea>
+          <button class="continue" id="blurtCheck">✓ VÉRIFIER</button>
+          <div id="blurtResult"></div>
+        </div>
+      </section>
+
+      <!-- WORD HUNT SCREEN -->
+      <section id="hunt" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>GIOCO RAPIDO</span>
+            <h2>WORD HUNT</h2>
+          </div>
+        </div>
+        <div class="panel center">
+          <span>CHOISIS LA BONNE RÉPONSE</span>
+          <h2 id="huntQuestion"></h2>
+          <div id="huntChoices" class="choices"></div>
+          <div id="huntFeedback"></div>
+        </div>
+      </section>
+
+      <!-- STORY SCREEN -->
+      <section id="story" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>STORYTELLING</span>
+            <h2>UNA STORIA</h2>
+          </div>
+        </div>
+        <div class="panel">
+          <p>Lis, écoute, puis raconte l'histoire avec tes propres mots.</p>
+          <div id="storyText"></div>
+          <button class="continue" id="storySpeak" style="margin-top:14px;">🔊 ÉCOUTER</button>
+        </div>
+      </section>
+
+      <!-- STATS SCREEN -->
+      <section id="statsScreen" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>PROGRESSI</span>
+            <h2>STATISTICHE</h2>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 id="statsTitle"></h3>
+          <div class="bar"><i id="bar"></i></div>
+          <p id="statsText"></p>
+          <hr>
+          <p>🎯 Objectif recommandé : 10–20 minutes par jour, avec production orale chaque jour.</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM NAVIGATION (7 TABS) -->
+    <nav class="bottom-nav">
+      <button data-go="home" class="active">⌂<small>Home</small></button>
+      <button data-go="learn">✦<small>Parole</small></button>
+      <button data-go="map">🧠<small>Map</small></button>
+      <button data-go="srs">🔄<small>SRS</small></button>
+      <button data-go="blurt">🔥<small>Blurt</small></button>
+      <button data-go="hunt">🎮<small>Hunt</small></button>
+      <button data-go="statsScreen">📊<small>Stats</small></button>
+    </nav>
+  </div>
+
+  <!-- IMPORTER / EXPORTER MODAL -->
+  <div id="importerModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📥 Import / Export Vocabulaire</h3>
+        <button id="closeImportBtn" class="icon-btn">✕</button>
+      </div>
+      <p class="hint">Ajoute une fiche sous la forme <code>MOT | Traduction | Hook | Synonymes | Collocations | Exemple</code>, une par ligne, ou colle un JSON exporté.</p>
+      <textarea id="importInput" placeholder="SBROGLIARSI | se débrouiller / se sortir d'une situation | Imagine... | cavarsela | sbrigarsi, arrangiarsi | Devo sbrigarmi."></textarea>
+      <div class="modal-actions">
+        <button id="doImportBtn" class="continue" style="margin-bottom:0">⚡ IMPORTER</button>
+        <button id="doExportBtn" class="neon-pill-btn">📤 EXPORTER JSON</button>
+      </div>
+      <div id="importFeedback" class="hint" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="vocabulary.js?v=1.9.3"></script>
+  <script src="mindmap.js?v=1.9.3"></script>
+  <script src="app.js?v=1.9.3"></script>
+</body>
+</html>
