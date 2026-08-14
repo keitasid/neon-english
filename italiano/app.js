@@ -2,9 +2,16 @@
   'use strict';
   const VOCAB = Array.isArray(window.ITALIANO_VOCAB) ? window.ITALIANO_VOCAB : [];
   const KEY = 'neonItaliano_v1';
-  const defaultState = { xp: 0, streak: 1, lastDay: '', mood: 'pronto', current: 0, reviews: {}, known: {}, stats: { seen: 0, correct: 0, blurts: 0, hunts: 0 } };
+  const DAY = 86400000;
+  const MINUTE = 60000;
+  const defaultState = {
+    xp: 0, streak: 1, lastDay: '', mood: 'pronto', current: 0,
+    reviews: {}, known: {},
+    stats: { seen: 0, correct: 0, blurts: 0, hunts: 0 }
+  };
   let state;
-  try { state = { ...defaultState, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (_) { state = { ...defaultState }; }
+  try { state = { ...defaultState, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
+  catch (_) { state = { ...defaultState }; }
   state.reviews ||= {}; state.known ||= {}; state.stats ||= { ...defaultState.stats };
 
   const $ = s => document.querySelector(s);
@@ -17,7 +24,7 @@
     if (!state.lastDay) state.lastDay = t;
     else if (state.lastDay !== t) {
       const a = new Date(state.lastDay), b = new Date(t);
-      const diff = Math.round((b - a) / 86400000);
+      const diff = Math.round((b - a) / DAY);
       state.streak = diff === 1 ? (state.streak || 1) + 1 : 1;
       state.lastDay = t;
     }
@@ -25,7 +32,19 @@
 
   function dueCount() {
     const now = Date.now();
-    return VOCAB.reduce((n, w, i) => n + ((state.reviews[i]?.due || 0) <= now ? 1 : 0), 0);
+    return VOCAB.reduce((n, _, i) => n + ((state.reviews[i]?.due || 0) <= now ? 1 : 0), 0);
+  }
+
+  function nextCardIndex() {
+    const now = Date.now();
+    // First priority: cards explicitly due for SRS.
+    const due = VOCAB.map((_, i) => i).filter(i => (state.reviews[i]?.due || 0) <= now);
+    if (due.length) return due[Math.floor(Math.random() * due.length)];
+    // Second priority: cards never reviewed.
+    const fresh = VOCAB.map((_, i) => i).filter(i => !state.reviews[i]);
+    if (fresh.length) return fresh[0];
+    // Otherwise cycle through the deck.
+    return (state.current + 1) % Math.max(1, VOCAB.length);
   }
 
   function show(screen) {
@@ -57,6 +76,47 @@
     $('#word').textContent = w.word || '';
     $('#card').innerHTML = `<h1>${w.word}</h1><div class="translation">${w.translation}</div><div class="phonetic">${w.phonetic} · ${w.level}</div>`;
     renderTab('memory');
+    updateGradeLabels();
+  }
+
+  function updateGradeLabels() {
+    const r = state.reviews[state.current % VOCAB.length];
+    const buttons = $$('[data-grade]');
+    if (!buttons.length) return;
+    if (!r || !r.reps) {
+      buttons[0].innerHTML = '🔴 Encore <small>10 min</small>';
+      buttons[1].innerHTML = '🟠 Difficile <small>1 j</small>';
+      buttons[2].innerHTML = '🟡 Bien <small>3 j</small>';
+      buttons[3].innerHTML = '🟢 Facile <small>7 j</small>';
+      return;
+    }
+    buttons[0].innerHTML = '🔴 Encore <small>10 min</small>';
+    buttons[1].innerHTML = `🟠 Difficile <small>${previewInterval(r, 2)}</small>`;
+    buttons[2].innerHTML = `🟡 Bien <small>${previewInterval(r, 3)}</small>`;
+    buttons[3].innerHTML = `🟢 Facile <small>${previewInterval(r, 4)}</small>`;
+  }
+
+  function formatInterval(ms) {
+    if (ms < DAY) return `${Math.max(1, Math.round(ms / MINUTE))} min`;
+    const d = Math.max(1, Math.round(ms / DAY));
+    return d === 1 ? '1 j' : `${d} j`;
+  }
+
+  function previewInterval(r, grade) {
+    return formatInterval(calculateInterval(r, grade));
+  }
+
+  // SM-2-inspired adaptive scheduling: failed cards return quickly;
+  // successful cards progressively move farther apart.
+  function calculateInterval(r, grade) {
+    const interval = r.interval || 0;
+    const ease = r.ease || 2.5;
+    if (grade === 1) return 10 * MINUTE;
+    if (grade === 2) return Math.max(DAY, interval ? interval * 1.2 * DAY : DAY);
+    if (!r.reps) return grade === 4 ? 7 * DAY : 3 * DAY;
+    if (r.reps === 1) return grade === 4 ? 10 * DAY : 6 * DAY;
+    const multiplier = grade === 4 ? ease * 1.35 : grade === 3 ? ease : 1.2;
+    return Math.max(DAY, interval * multiplier * DAY);
   }
 
   function renderTab(tab) {
@@ -73,14 +133,27 @@
   }
 
   function schedule(i, grade) {
-    const r = state.reviews[i] || { interval: 0, reps: 0 };
-    const days = { 1: 0, 2: 1, 3: Math.max(2, Math.round((r.interval || 1) * 2)), 4: Math.max(4, Math.round((r.interval || 2) * 3)) };
-    r.interval = days[grade];
-    r.reps = (r.reps || 0) + 1;
-    r.due = Date.now() + r.interval * 86400000;
+    const r = state.reviews[i] || { interval: 0, reps: 0, ease: 2.5 };
+    const oldEase = r.ease || 2.5;
+    const intervalDays = r.interval || 0;
+    const nextMs = calculateInterval(r, grade);
+    // Ease factor adapts to difficulty but stays in a safe range.
+    if (grade === 1) r.ease = Math.max(1.3, oldEase - 0.20);
+    else if (grade === 2) r.ease = Math.max(1.3, oldEase - 0.08);
+    else if (grade === 4) r.ease = Math.min(3.2, oldEase + 0.08);
+    else r.ease = oldEase;
+
+    r.reps = grade === 1 ? 0 : (r.reps || 0) + 1;
+    r.interval = nextMs / DAY;
+    r.lastGrade = grade;
+    r.lastReviewed = Date.now();
+    r.due = Date.now() + nextMs;
+    r.lapses = (r.lapses || 0) + (grade === 1 ? 1 : 0);
     state.reviews[i] = r;
-    if (grade >= 3) state.known[i] = true;
-    else delete state.known[i];
+
+    if (grade >= 3 && r.reps >= 2) state.known[i] = true;
+    else if (grade === 1) delete state.known[i];
+
     state.xp += grade * 5;
     state.stats.seen++;
     if (grade >= 3) state.stats.correct++;
@@ -89,8 +162,9 @@
   }
 
   function gradeCurrent(grade) {
-    schedule(state.current % VOCAB.length, grade);
-    state.current = (state.current + 1) % VOCAB.length;
+    const i = state.current % VOCAB.length;
+    schedule(i, grade);
+    state.current = nextCardIndex();
     save();
     renderLearn();
   }
@@ -119,7 +193,13 @@
   }
 
   function renderSrs() {
-    $('#srsDue').textContent = dueCount();
+    const due = dueCount();
+    $('#srsDue').textContent = due;
+    const panel = $('#srsDue')?.closest('.panel');
+    if (panel) {
+      const p = panel.querySelector('p');
+      if (p) p.textContent = due ? `${due} carte${due > 1 ? 's' : ''} prête${due > 1 ? 's' : ''}. Les difficultés reviennent rapidement ; les cartes solides s'espacent progressivement.` : 'Aucune carte n’est due. Tu peux découvrir un nouveau mot ou revenir plus tard.';
+    }
   }
 
   function renderBlurt() {
@@ -147,13 +227,12 @@
     const pool = VOCAB.filter((_, i) => i !== (state.current % VOCAB.length)).sort(() => Math.random() - .5).slice(0, 3);
     const choices = [answer, ...pool].sort(() => Math.random() - .5);
     $('#huntQuestion').textContent = `🇫🇷 ${answer.translation}`;
-    $('#huntChoices').innerHTML = choices.map((w, i) => `<button data-answer="${w.word}">${w.word}</button>`).join('');
+    $('#huntChoices').innerHTML = choices.map(w => `<button data-answer="${w.word}">${w.word}</button>`).join('');
     $('#huntFeedback').innerHTML = '';
     $$('#huntChoices button').forEach(b => b.addEventListener('click', () => {
       const ok = b.dataset.answer === answer.word;
-      state.stats.hunts++; state.xp += ok ? 15 : 3; if (ok) state.stats.correct++; save();
-      $('#huntFeedback').innerHTML = ok ? '<p>🟢 Correct !</p>' : `<p>🔴 La réponse était <strong>${answer.word}</strong>.</p>`;
-      renderHeader();
+      state.stats.hunts++; state.xp += ok ? 15 : 3; if (ok) state.stats.correct++;
+      save(); $('#huntFeedback').innerHTML = ok ? '<p>🟢 Correct !</p>' : `<p>🔴 La réponse était <strong>${answer.word}</strong>.</p>`; renderHeader();
     }));
   }
 
@@ -167,7 +246,8 @@
     const pct = total ? Math.round(known / total * 100) : 0;
     $('#statsTitle').textContent = `${known} / ${total} mots actifs maîtrisés`;
     $('#bar').style.width = pct + '%';
-    $('#statsText').textContent = `${pct}% du parcours initial. ${state.stats.seen} évaluations SRS, ${state.stats.blurts} blurtings et ${state.stats.hunts} défis Hunt.`;
+    const avgEase = Object.values(state.reviews).filter(r => r.ease).reduce((a, r) => a + r.ease, 0) / Math.max(1, Object.values(state.reviews).filter(r => r.ease).length);
+    $('#statsText').textContent = `${pct}% du parcours initial. ${state.stats.seen} évaluations SRS, ${state.stats.blurts} blurtings et ${state.stats.hunts} défis Hunt. Facteur de facilité moyen : ${avgEase.toFixed(2)}.`;
   }
 
   function speak(text) {
@@ -180,12 +260,14 @@
     $$('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
     $$('.mood').forEach(b => b.addEventListener('click', () => { state.mood = b.dataset.mood; $$('.mood').forEach(x => x.classList.remove('active')); b.classList.add('active'); $('#moodLabel').textContent = b.textContent.replace(/^\S+\s/, ''); save(); }));
     $$('.tabs button').forEach(b => b.addEventListener('click', () => renderTab(b.dataset.tab)));
-    $('#next').addEventListener('click', () => { state.current = (state.current + 1) % VOCAB.length; save(); renderLearn(); });
+    $('#next').addEventListener('click', () => { state.current = nextCardIndex(); save(); renderLearn(); });
     $$('[data-grade]').forEach(b => b.addEventListener('click', () => gradeCurrent(Number(b.dataset.grade))));
     $('#mapWord').addEventListener('change', e => { state.current = Number(e.target.value); save(); drawMap(state.current); });
     $('#blurtCheck').addEventListener('click', blurtCheck);
     $('#storySpeak').addEventListener('click', () => speak(currentWord().story));
-    renderHeader(); renderLearn();
+    renderHeader();
+    state.current = nextCardIndex();
+    renderLearn();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
