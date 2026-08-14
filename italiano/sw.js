@@ -1,4 +1,4 @@
-const CACHE = 'neon-italiano-v1.9';
+const CACHE = 'neon-italiano-v1.9.1';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './vocabulary.js', './mindmap.js', './manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -12,25 +12,32 @@ self.addEventListener('activate', event => {
 async function appResponse(request) {
   const response = await fetch(request);
   if (request.mode !== 'navigate') return response;
-  try {
-    const html = await response.text();
-    if (html.includes('mindmap.js')) return new Response(html, {status:response.status,statusText:response.statusText,headers:response.headers});
-    const injected = html.replace('</body>', '<script src="mindmap.js"></script></body>');
-    const headers = new Headers(response.headers);
-    headers.set('content-type','text/html; charset=utf-8');
-    return new Response(injected,{status:response.status,statusText:response.statusText,headers});
-  } catch (_) { return response; }
+  const html = await response.text();
+  if (html.includes('src="mindmap.js"')) return new Response(html, {status:response.status,statusText:response.statusText,headers:response.headers});
+  const injected = html.replace('</body>', '<script src="mindmap.js"></script></body>');
+  const headers = new Headers(response.headers);
+  headers.set('content-type','text/html; charset=utf-8');
+  return new Response(injected,{status:response.status,statusText:response.statusText,headers});
 }
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-  event.respondWith(caches.match(event.request).then(async cached => {
-    if (cached) return cached;
+  event.respondWith((async()=>{
     try {
-      const response = await appResponse(event.request);
+      if (event.request.mode === 'navigate') {
+        const response = await appResponse(event.request);
+        const copy = response.clone();
+        caches.open(CACHE).then(c => c.put(event.request, copy));
+        return response;
+      }
+      const cached = await caches.match(event.request);
+      if (cached) return cached;
+      const response = await fetch(event.request);
       const copy = response.clone();
       caches.open(CACHE).then(c => c.put(event.request, copy));
       return response;
-    } catch (_) { return caches.match('./index.html'); }
-  }));
+    } catch (_) {
+      return caches.match(event.request) || caches.match('./index.html');
+    }
+  })());
 });
