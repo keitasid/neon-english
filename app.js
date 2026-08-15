@@ -23,8 +23,18 @@ if (Array.isArray(customVocab) && customVocab.length > 0) {
   });
 }
 
+// L'état sauvegardé contenait `vocab`, et comme il est étalé EN DERNIER il
+// écrasait la liste du fichier. Conséquence : un élève ayant ouvert l'app une
+// fois restait bloqué à jamais sur l'ancien vocabulaire, quelle que soit la
+// mise à jour publiée. On restaure la progression, jamais le corpus : celui-ci
+// vient toujours de data/vocabulary.js, plus les ajouts personnels de l'élève.
+const persistedState = (() => {
+  try { return JSON.parse(localStorage.getItem("neonState_v2") || "{}"); }
+  catch (_) { return {}; }
+})();
+delete persistedState.vocab;
+
 const state = {
-  vocab: initialVocab,
   currentTab: "memory",
   xp: 0,
   streak: 1,
@@ -32,7 +42,8 @@ const state = {
   totalQuizzes: 0,
   correctQuizzes: 0,
   lastActiveDay: new Date().toDateString(),
-  ...JSON.parse(localStorage.getItem("neonState_v2") || "{}")
+  ...persistedState,
+  vocab: initialVocab
 };
 
 let currentIndex = 0;
