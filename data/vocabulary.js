@@ -540,3 +540,5 @@ window.INITIAL_VOCAB = [
     srs: { interval: 1, easeFactor: 2.5, dueDate: Date.now(), reps: 0, lastReviewed: null }
   }
 ];
+
+window.VOCABULARY_DATA = window.INITIAL_VOCAB;

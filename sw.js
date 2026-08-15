@@ -1,16 +1,16 @@
-const CACHE = "neon-english-v0.3.0";
+const CACHE = "neon-english-v0.3.1";
 const ASSETS = [
   "./",
-  "./index.html?v=0.3.0",
+  "./index.html?v=0.3.1",
   "./styles.css?v=0.3.0",
-  "./app.js?v=0.3.0",
-  "./srs.js?v=0.3.0",
-  "./mindmap.js?v=0.3.0",
-  "./story.js?v=0.3.0",
-  "./importer.js?v=0.3.0",
-  "./analytics.js?v=0.3.0",
-  "./data/vocabulary.js?v=0.3.0",
-  "./data/immersion_scenarios.js?v=0.3.0",
+  "./app.js?v=0.3.1",
+  "./srs.js?v=0.3.1",
+  "./mindmap.js?v=0.3.1",
+  "./story.js?v=0.3.1",
+  "./importer.js?v=0.3.1",
+  "./analytics.js?v=0.3.1",
+  "./data/vocabulary.js?v=0.3.1",
+  "./data/immersion_scenarios.js?v=0.3.1",
   "./manifest.webmanifest",
   "./icons/apple-touch-icon.png",
   "./icons/icon-192.png",
@@ -43,7 +43,7 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match("./index.html?v=0.3.0") || caches.match("./index.html"))
+      fetch(e.request).catch(() => caches.match("./index.html?v=0.3.1") || caches.match("./index.html"))
     );
     return;
   }
@@ -55,7 +55,7 @@ self.addEventListener("fetch", e => {
         const copy = resp.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
         return resp;
-      }).catch(() => caches.match("./index.html?v=0.3.0"));
+      }).catch(() => caches.match("./index.html?v=0.3.1"));
     })
   );
 });
