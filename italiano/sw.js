@@ -1,12 +1,14 @@
-const CACHE = 'neon-italiano-v1.9.3';
+const CACHE = 'neon-italiano-v2.0.0';
 const ASSETS = [
   './',
-  './index.html?v=1.9.3',
-  './styles.css?v=1.9.3',
-  './app.js?v=1.9.3',
-  './mindmap.js?v=1.9.3',
-  './vocabulary.js?v=1.9.3',
-  './manifest.webmanifest?v=1.9.3'
+  './index.html?v=2.0.0',
+  './styles.css?v=2.0.0',
+  './app.js?v=2.0.0',
+  './mindmap.js?v=2.0.0',
+  './analytics.js?v=2.0.0',
+  './immersion_scenarios.js?v=2.0.0',
+  './vocabulary.js?v=2.0.0',
+  './manifest.webmanifest?v=2.0.0'
 ];
 
 self.addEventListener('install', e => {
@@ -35,7 +37,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match('./index.html?v=1.9.3') || caches.match('./index.html'))
+      fetch(e.request).catch(() => caches.match('./index.html?v=2.0.0') || caches.match('./index.html'))
     );
     return;
   }
@@ -47,7 +49,7 @@ self.addEventListener('fetch', e => {
         const copy = resp.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
         return resp;
-      }).catch(() => caches.match('./index.html?v=1.9.3'));
+      }).catch(() => caches.match('./index.html?v=2.0.0'));
     })
   );
 });

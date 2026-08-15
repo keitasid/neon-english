@@ -4,27 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0B0D0C">
-  <meta name="description" content="NEON ENGLISH V0.2.2 — Apprentissage de l'anglais par associations, carte mentale interactive 2D Canvas dynamique, répétition espacée SRS et rappel actif.">
+  <meta name="description" content="NEON ENGLISH V0.3.0 — Apprentissage de l'anglais par associations, carte mentale interactive 2D Canvas dynamique, répétition espacée SRS, mode immersion et rappel actif.">
   
   <!-- iOS Safari PWA Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="NEON ENGLISH">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=0.2.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=0.3.0">
   
   <!-- Web App Manifest -->
-  <link rel="manifest" href="manifest.webmanifest?v=0.2.2">
-  <link rel="stylesheet" href="styles.css?v=0.2.2">
-  <title>NEON ENGLISH V0.2.2</title>
+  <link rel="manifest" href="manifest.webmanifest?v=0.3.0">
+  <link rel="stylesheet" href="styles.css?v=0.3.0">
+  <title>NEON ENGLISH V0.3.0</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark">N</span>
-        <div><b>NEON ENGLISH</b><small>V0.2.2 · Connect & Learn</small></div>
+        <div><b>NEON ENGLISH</b><small>V0.3.0 · Connect & Learn</small></div>
       </div>
       <div class="topbar-actions">
+        <button id="openAddWordBtn" class="neon-pill-btn" title="Ajouter un mot">➕ Mot</button>
         <button id="srsDueBtn" class="neon-pill-btn" data-screen="srs-screen">⚡ SRS <span id="srsDueBadge" class="badge">0</span></button>
         <button id="openImportBtn" class="icon-btn" title="Importer/Exporter du vocabulaire">📥</button>
         <button id="installBtn" class="ghost hidden">＋ Installer</button>
@@ -36,9 +37,9 @@
       <!-- HOME SCREEN -->
       <section id="home" class="screen active">
         <div class="hero">
-          <div class="eyebrow">YOUR ENGLISH UNIVERSE · V0.2.2</div>
+          <div class="eyebrow">YOUR ENGLISH UNIVERSE · V0.3.0</div>
           <h1>Make the word <span>stick.</span></h1>
-          <p>Associations → Carte Mentale 2D → SRS → Storytelling → Production.</p>
+          <p>Associations → Carte Mentale 2D → SRS → Immersion → Production.</p>
         </div>
 
         <div class="brain-card">
@@ -62,6 +63,10 @@
           </button>
 
           <div class="grid-actions">
+            <button class="action-card" data-screen="immersion-screen">
+              <span class="action-icon">🌍</span>
+              <span><b>IMMERSION</b><small>7 Situations réelles & dialogues</small></span>
+            </button>
             <button class="action-card" data-screen="mindmap-screen">
               <span class="action-icon">🧠</span>
               <span><b>MIND MAP</b><small>Carte mentale 2D dynamique</small></span>
@@ -131,6 +136,29 @@
         </div>
       </section>
 
+      <!-- IMMERSION SCREEN -->
+      <section id="immersion-screen" class="screen">
+        <div class="section-head">
+          <button class="back" data-screen="home">←</button>
+          <div>
+            <span class="eyebrow">REAL LIFE SITUATIONS</span>
+            <h2>MODE IMMERSION</h2>
+          </div>
+        </div>
+
+        <p class="muted">Sélectionne un scénario pour pratiquer des dialogues immersifs avec audio et shadowing :</p>
+        <div id="immersionGrid" class="immersion-grid"></div>
+
+        <div id="scenarioViewer" class="story-output hidden" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="immersionTitle" style="margin:0;"></h3>
+            <span class="neon-pill-btn">🗣️ Shadowing Ready</span>
+          </div>
+          <p id="immersionDesc" class="muted" style="margin:6px 0 16px;"></p>
+          <div id="dialogueList" class="dialogue-list"></div>
+        </div>
+      </section>
+
       <!-- MIND MAP SCREEN (2D DYNAMIC CANVAS) -->
       <section id="mindmap-screen" class="screen">
         <div class="section-head">
@@ -164,9 +192,7 @@
         </div>
 
         <div class="srs-card">
-          <div id="srsCardInner" class="srs-card-content">
-            <!-- Dynamic SRS Flashcard -->
-          </div>
+          <div id="srsCardInner" class="srs-card-content"></div>
         </div>
       </section>
 
@@ -248,12 +274,68 @@
     <nav class="bottom-nav">
       <button data-screen="home" class="nav active">⌂<span>Home</span></button>
       <button data-screen="universe" class="nav">✦<span>Universe</span></button>
+      <button data-screen="immersion-screen" class="nav">🌍<span>Immersion</span></button>
       <button data-screen="mindmap-screen" class="nav">🧠<span>Map</span></button>
       <button data-screen="srs-screen" class="nav">🔄<span>SRS</span></button>
       <button data-screen="blurting" class="nav">🔥<span>Blurt</span></button>
-      <button data-screen="hunt" class="nav">🎮<span>Hunt</span></button>
       <button data-screen="analytics-screen" class="nav">📊<span>Stats</span></button>
     </nav>
+  </div>
+
+  <!-- ➕ ADD NEW WORD MODAL -->
+  <div id="addWordModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>➕ Ajouter un Nouveau Mot (Approches 1 & 3)</h3>
+        <button id="closeAddWordBtn" class="icon-btn">✕</button>
+      </div>
+      <p class="muted" style="font-size:13px; margin-bottom:14px;">
+        Le mot sera instantanément intégré à la Carte Mentale, au SRS, au Blurting et aux Analytics.
+      </p>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>MOT ANGLAIS *</label>
+          <input id="newWord" class="form-input" placeholder="ex: BENCHMARK" />
+        </div>
+        <div class="form-group">
+          <label>TRADUCTION / SENS *</label>
+          <input id="newMeaning" class="form-input" placeholder="ex: Référence / Point de repère" />
+        </div>
+        <div class="form-group">
+          <label>PRONONCIATION (Phonétique)</label>
+          <input id="newPhonetic" class="form-input" placeholder="ex: [ˈbentʃmɑːk]" />
+        </div>
+        <div class="form-group">
+          <label>SYNONYMES (séparés par virgule)</label>
+          <input id="newSynonyms" class="form-input" placeholder="ex: standard, reference point" />
+        </div>
+        <div class="form-group">
+          <label>ANTONYMES (séparés par virgule)</label>
+          <input id="newAntonyms" class="form-input" placeholder="ex: anomaly, deviation" />
+        </div>
+        <div class="form-group">
+          <label>COLLOCATIONS CLÉS</label>
+          <input id="newCollocations" class="form-input" placeholder="ex: set a benchmark, benchmark index" />
+        </div>
+        <div class="form-group full">
+          <label>🧠 MEMORY HOOK (Approche 1 : image forte ou son similaire)</label>
+          <input id="newHook" class="form-input" placeholder="ex: Une marque sur un banc de mesure pour fixer la norme." />
+        </div>
+        <div class="form-group full">
+          <label>💬 PHRASE D'EXEMPLE</label>
+          <input id="newExample" class="form-input" placeholder="ex: This index serves as a benchmark for European equities." />
+        </div>
+        <div class="form-group full">
+          <label>🎭 MINI-STORY / CONTEXTE</label>
+          <textarea id="newStory" class="form-textarea" placeholder="ex: During the annual portfolio review, the fund manager benchmarked their quarterly yield."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="saveNewWordBtn" class="primary-btn" style="flex:1">💾 Enregistrer dans mon Univers</button>
+      </div>
+    </div>
   </div>
 
   <!-- IMPORTER / EXPORTER MODAL -->
@@ -276,12 +358,13 @@
   </div>
 
   <!-- SCRIPTS WITH CACHE BUSTING VERSION -->
-  <script src="data/vocabulary.js?v=0.2.2"></script>
-  <script src="srs.js?v=0.2.2"></script>
-  <script src="mindmap.js?v=0.2.2"></script>
-  <script src="story.js?v=0.2.2"></script>
-  <script src="importer.js?v=0.2.2"></script>
-  <script src="analytics.js?v=0.2.2"></script>
-  <script src="app.js?v=0.2.2"></script>
+  <script src="data/vocabulary.js?v=0.3.0"></script>
+  <script src="data/immersion_scenarios.js?v=0.3.0"></script>
+  <script src="srs.js?v=0.3.0"></script>
+  <script src="mindmap.js?v=0.3.0"></script>
+  <script src="story.js?v=0.3.0"></script>
+  <script src="importer.js?v=0.3.0"></script>
+  <script src="analytics.js?v=0.3.0"></script>
+  <script src="app.js?v=0.3.0"></script>
 </body>
 </html>

@@ -1,36 +1,42 @@
-// NEON ENGLISH V0.2 — Main Core Application Logic
+// NEON ENGLISH — Core Application Orchestrator v0.3.0
+
+// Load custom user vocabulary if present
+const CUSTOM_KEY = "neonEnglish_customVocab_v1";
+let customVocab = [];
+try {
+  customVocab = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+} catch (_) {
+  customVocab = [];
+}
+
+const initialVocab = Array.isArray(VOCABULARY_DATA) ? [...VOCABULARY_DATA] : [];
+if (Array.isArray(customVocab) && customVocab.length > 0) {
+  const existingIds = new Set(initialVocab.map(w => w.id));
+  customVocab.forEach(item => {
+    if (!existingIds.has(item.id)) initialVocab.push(item);
+  });
+}
+
+const state = {
+  vocab: initialVocab,
+  currentTab: "memory",
+  xp: 0,
+  streak: 1,
+  mode: "restless",
+  totalQuizzes: 0,
+  correctQuizzes: 0,
+  lastActiveDay: new Date().toDateString(),
+  ...JSON.parse(localStorage.getItem("neonState_v2") || "{}")
+};
 
 let currentIndex = 0;
-let currentTab = "memory";
 let timerId = null;
 let deferredPrompt = null;
 let mindmapInstance = null;
+let currentImmersionScenario = (window.IMMERSION_SCENARIOS && window.IMMERSION_SCENARIOS[0]) || null;
 
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
-
-// Load state or initialize with default structure
-let state = JSON.parse(localStorage.getItem("neonState_v2") || 'null');
-if (!state) {
-  state = {
-    xp: 0,
-    mastered: 0,
-    streak: 1,
-    mode: "restless",
-    totalQuizzes: 0,
-    correctQuizzes: 0,
-    vocab: window.INITIAL_VOCAB || []
-  };
-} else if (!state.vocab || state.vocab.length === 0) {
-  state.vocab = window.INITIAL_VOCAB || [];
-}
-
-// Ensure all entries have SRS and Stage fields
-state.vocab = state.vocab.map(item => ({
-  ...item,
-  stage: item.stage || 1,
-  srs: item.srs || { interval: 1, easeFactor: 2.5, dueDate: Date.now(), reps: 0, lastReviewed: null }
-}));
+const $ = sel => document.querySelector(sel);
+const $$ = sel => [...document.querySelectorAll(sel)];
 
 function saveState() {
   localStorage.setItem("neonState_v2", JSON.stringify(state));
@@ -38,17 +44,26 @@ function saveState() {
 }
 
 function updateHeaderStats() {
-  const stats = Analytics.computeStats(state.vocab, state);
-  $("#xp").textContent = state.xp;
-  $("#mastered").textContent = stats.stageCounts[4] || 0;
-  $("#streak").textContent = state.streak;
-  $("#srsDueBadge").textContent = stats.dueCount;
+  const xpEl = $("#xp");
+  const streakEl = $("#streak");
+  const masteredEl = $("#mastered");
+  const srsDueBadge = $("#srsDueBadge");
+
+  if (xpEl) xpEl.textContent = state.xp || 0;
+  if (streakEl) streakEl.textContent = state.streak || 1;
+
+  const dueCount = SRS.getDueWords(state.vocab).length;
+  if (srsDueBadge) srsDueBadge.textContent = dueCount;
+
+  const masteredCount = state.vocab.filter(w => (w.stage || 1) === 4).length;
+  if (masteredEl) masteredEl.textContent = masteredCount;
 }
 
-// Screen Navigation
+// Navigation & Screen Management
 function go(id) {
   $$(".screen").forEach(x => x.classList.toggle("active", x.id === id));
   $$(".nav").forEach(x => x.classList.toggle("active", x.dataset.screen === id));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (id === "universe") renderWord();
   if (id === "mindmap-screen") initOrUpdateMindMap();
@@ -56,8 +71,10 @@ function go(id) {
   if (id === "blurting") setupBlurtScreen();
   if (id === "hunt") newHunt();
   if (id === "story-screen") setupStoryScreen();
+  if (id === "immersion-screen") renderImmersionScreen();
   if (id === "analytics-screen") renderAnalyticsScreen();
 }
+window.go = go;
 
 $$("[data-screen]").forEach(b => b.addEventListener("click", () => go(b.dataset.screen)));
 
@@ -88,64 +105,83 @@ function renderWord() {
     stageBadge.className = `stage-pill ${stageData.class}`;
   }
 
-  $("#wordCard").innerHTML = `
-    <div class="eyebrow">${w.category.toUpperCase()} · MEMORY CARD</div>
+  const wordCard = $("#wordCard");
+  wordCard.innerHTML = `
+    <div class="label">${w.category || "FINANCE & STRATEGY"}</div>
     <h1>${w.word}</h1>
     <div class="meaning">${w.meaning}</div>
-    <div class="phonetic">${w.phonetic}</div>
-    <div class="hook">
-      <b>🧠 MEMORY HOOK (Approche 1)</b><br>${w.hook}
-    </div>
+    <div class="phonetic">${w.phonetic || ""}</div>
+    <div class="hook"><b>🧠 Memory Hook:</b> ${w.hook || "Association visuelle"}</div>
   `;
-  renderTab();
+
+  renderActiveTab();
 }
 
-function renderTab() {
-  if (!state.vocab.length) return;
+function renderActiveTab() {
   const w = state.vocab[currentIndex % state.vocab.length];
-  const c = $("#tabContent");
+  const tabContent = $("#tabContent");
+  if (!tabContent) return;
 
-  if (currentTab === "memory") {
-    c.innerHTML = `
-      <div><b>Synonyms</b><br>${w.synonyms.map(x => `<span class="pill">${x}</span>`).join("") || "—"}</div>
-      <div style="margin-top:10px"><b>Opposites</b><br>${w.antonyms.map(x => `<span class="pill">${x}</span>`).join("") || "—"}</div>
-      <div class="example">“${w.example}”</div>
-      <div class="translation">${w.translation}</div>
+  const splitList = val => Array.isArray(val) ? val : String(val || "").split(/\s*[·,;•]\s*/).filter(Boolean);
+  const synonyms = splitList(w.synonyms);
+  const antonyms = splitList(w.antonyms);
+  const collocations = splitList(w.collocations);
+
+  if (state.currentTab === "memory") {
+    tabContent.innerHTML = `
+      <p><b>Approche 1 — Ancrage Mental :</b></p>
+      <p style="font-size:15px; margin-top:6px;">${w.hook}</p>
+      <div style="margin-top:14px;">
+        <span class="label">IMAGE VISUELLE :</span>
+        <p style="margin-top:4px; font-style:italic;">Imagine une situation concrète où tu dois utiliser <b>${w.word}</b>.</p>
+      </div>
     `;
-  } else if (currentTab === "links") {
-    c.innerHTML = `
-      <b>🔗 Word Network (Approche 3)</b>
-      <p>${w.links.map(x => `<span class="pill">${x}</span>`).join("")}</p>
-      <p style="margin-top:12px"><b>Collocations & Expressions</b></p>
-      <p>${w.collocations.map(x => `<span class="pill">${x}</span>`).join("")}</p>
+  } else if (state.currentTab === "links") {
+    const synHTML = synonyms.map(s => `<span class="pill">${s}</span>`).join("") || '<span class="muted">Aucun</span>';
+    const antHTML = antonyms.map(a => `<span class="pill" style="border-color:rgba(80,124,109,0.4)">${a}</span>`).join("") || '<span class="muted">Aucun</span>';
+    const colHTML = collocations.map(c => `<span class="pill" style="border-color:rgba(201,178,124,0.4)">${c}</span>`).join("") || '<span class="muted">Aucune</span>';
+
+    tabContent.innerHTML = `
+      <div><span class="label">🔗 SYNONYMES :</span><div style="margin-top:6px;">${synHTML}</div></div>
+      <div style="margin-top:14px;"><span class="label">⚡ ANTONYMES :</span><div style="margin-top:6px;">${antHTML}</div></div>
+      <div style="margin-top:14px;"><span class="label">💼 COLLOCATIONS & FORMES :</span><div style="margin-top:6px;">${colHTML}</div></div>
     `;
-  } else if (currentTab === "story") {
-    c.innerHTML = `
-      <b>🎭 Mini-story</b>
-      <p class="example">${w.story}</p>
-      <p class="translation">${w.personal || "Fais une pause et visualise l'histoire dans ton esprit."}</p>
+  } else if (state.currentTab === "story") {
+    tabContent.innerHTML = `
+      <span class="label">CONTEXTUAL MINI-STORY :</span>
+      <p class="example" style="font-size:16px;">${w.story || w.example}</p>
+      <button class="primary-btn" onclick="speakCurrent('${(w.story || w.example).replace(/'/g, "\\'")}')" style="margin-top:10px">🔊 Écouter l'histoire</button>
     `;
-  } else if (currentTab === "speak") {
-    c.innerHTML = `
-      <b>🗣️ Shadowing Practice</b>
-      <p class="example">“${w.example}”</p>
-      <button class="primary-btn" onclick="speakCurrent()">🔊 Écouter & Répéter</button>
-      <p class="translation" style="margin-top:12px">Répète immédiatement à voix haute en imitant le rythme et l'intonation.</p>
+  } else if (state.currentTab === "speak") {
+    tabContent.innerHTML = `
+      <span class="label">🗣️ SHADOWING PRACTICE :</span>
+      <p class="example">${w.example}</p>
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+        <button class="primary-btn" onclick="speakCurrent('${w.example.replace(/'/g, "\\'")}')">🔊 Écouter</button>
+        <button class="secondary-btn" onclick="markShadowingDone()">✓ J'ai répété à voix haute (+15 XP)</button>
+      </div>
     `;
   }
 }
 
-$$(".tab").forEach(b => b.addEventListener("click", () => {
-  $$(".tab").forEach(x => x.classList.remove("active"));
+function markShadowingDone() {
+  state.xp += 15;
+  const w = state.vocab[currentIndex % state.vocab.length];
+  w.productionCount = (w.productionCount || 0) + 1;
+  saveState();
+  alert(`🔥 Shadowing enregistré pour "${w.word}" ! +15 XP`);
+}
+window.markShadowingDone = markShadowingDone;
+
+$$(".tabs button").forEach(b => b.addEventListener("click", () => {
+  $$(".tabs button").forEach(x => x.classList.remove("active"));
   b.classList.add("active");
-  currentTab = b.dataset.tab;
-  renderTab();
+  state.currentTab = b.dataset.tab;
+  renderActiveTab();
 }));
 
-$("#nextWord").addEventListener("click", () => {
-  currentIndex++;
-  state.xp += 10;
-  saveState();
+$("#nextWord")?.addEventListener("click", () => {
+  currentIndex = (currentIndex + 1) % state.vocab.length;
   renderWord();
 });
 
@@ -155,8 +191,10 @@ function gradeCurrentWord(grade) {
   w.srs = srsResult;
   w.stage = SRS.updateStage(w, srsResult);
 
-  if (grade >= 3) state.xp += 25;
+  state.xp += grade * 10;
   saveState();
+
+  currentIndex = (currentIndex + 1) % state.vocab.length;
   renderWord();
 }
 window.gradeCurrentWord = gradeCurrentWord;
@@ -193,7 +231,7 @@ let isAnswerRevealed = false;
 
 function renderSRSDeck() {
   srsQueue = SRS.getDueWords(state.vocab);
-  if (srsQueue.length === 0) srsQueue = state.vocab; // Fallback to all words if none due
+  if (srsQueue.length === 0) srsQueue = state.vocab;
   srsQueueIdx = 0;
   showSRSCard();
 }
@@ -218,15 +256,16 @@ function showSRSCard() {
     <h1 style="font-size:46px; margin:15px 0;">${w.word}</h1>
     <div id="srsAnswerArea" class="hidden">
       <div class="meaning" style="color:var(--yellow); font-weight:800; font-size:24px;">${w.meaning}</div>
-      <div class="hook" style="margin:15px 0; text-align:left;"><b>🧠 Memory Hook:</b> ${w.hook}</div>
-      <div class="example">“${w.example}”</div>
+      <div class="phonetic" style="margin:8px 0;">${w.phonetic || ""}</div>
+      <div class="hook" style="text-align:left; margin:15px 0;"><b>🧠 Hook :</b> ${w.hook}</div>
+      <p class="example" style="font-size:15px;">${w.example}</p>
     </div>
-    <div style="margin-top:25px;" id="srsActionArea">
-      <button id="revealSrsBtn" class="primary-btn" style="width:100%;">👁️ Révéler la réponse</button>
+    <div id="srsActionArea" style="margin-top:20px;">
+      <button id="revealAnswerBtn" class="primary-btn">👁️ Révéler la réponse</button>
     </div>
   `;
 
-  $("#revealSrsBtn").addEventListener("click", () => {
+  $("#revealAnswerBtn").addEventListener("click", () => {
     isAnswerRevealed = true;
     $("#srsAnswerArea").classList.remove("hidden");
     $("#srsActionArea").innerHTML = `
@@ -269,7 +308,7 @@ function setupBlurtScreen() {
   $("#timer").textContent = "60";
 }
 
-$("#startBlurt").addEventListener("click", () => {
+$("#startBlurt")?.addEventListener("click", () => {
   clearInterval(timerId);
   blurtSeconds = 60;
   $("#timer").textContent = 60;
@@ -278,25 +317,34 @@ $("#startBlurt").addEventListener("click", () => {
     $("#timer").textContent = blurtSeconds;
     if (blurtSeconds <= 0) {
       clearInterval(timerId);
-      $("#timer").textContent = "TIME";
+      $("#checkBlurt").click();
     }
   }, 1000);
 });
 
-$("#checkBlurt").addEventListener("click", () => {
-  const text = $("#blurtInput").value.toLowerCase();
+$("#checkBlurt")?.addEventListener("click", () => {
+  clearInterval(timerId);
   const w = state.vocab[currentIndex % state.vocab.length];
-  const terms = [w.meaning.toLowerCase(), ...w.synonyms.map(s => s.toLowerCase()), ...w.collocations.map(c => c.toLowerCase())];
+  const text = ($("#blurtInput").value || "").toLowerCase();
 
-  const hit = terms.filter(t => t && text.includes(t));
+  const splitList = val => Array.isArray(val) ? val : String(val || "").split(/\s*[·,;•]\s*/).filter(Boolean);
+  const terms = [
+    w.meaning.toLowerCase(),
+    ...splitList(w.synonyms).map(s => s.toLowerCase()),
+    ...splitList(w.collocations).map(c => c.toLowerCase())
+  ];
+
+  const hit = terms.filter(t => text.includes(t));
   const res = $("#blurtResult");
   res.classList.remove("hidden");
+
   res.innerHTML = `
     <b>🧠 Active Recall Check — ${w.word}</b>
     <p>Tu as retrouvé <b>${hit.length}/${terms.length}</b> termes et collocations clés.</p>
     <p>${terms.slice(0, 6).map(t => text.includes(t) ? `🟢 ${t}` : `🔴 ${t}`).join("<br>")}</p>
   `;
 
+  w.blurtScore = Math.round((hit.length / Math.max(1, terms.length)) * 100);
   state.xp += hit.length * 20;
   state.totalQuizzes = (state.totalQuizzes || 0) + 1;
   if (hit.length >= 2) state.correctQuizzes = (state.correctQuizzes || 0) + 1;
@@ -345,7 +393,7 @@ function setupStoryScreen() {
   `;
 }
 
-$("#generateStoryBtn").addEventListener("click", () => {
+$("#generateStoryBtn")?.addEventListener("click", () => {
   const id1 = $("#sw1") ? $("#sw1").value : state.vocab[0].id;
   const id2 = $("#sw2") ? $("#sw2").value : state.vocab[1].id;
   const id3 = $("#sw3") ? $("#sw3").value : state.vocab[2].id;
@@ -365,7 +413,7 @@ $("#generateStoryBtn").addEventListener("click", () => {
   `;
 });
 
-$("#randomStoryBtn").addEventListener("click", () => {
+$("#randomStoryBtn")?.addEventListener("click", () => {
   const shuffled = [...state.vocab].sort(() => 0.5 - Math.random());
   if (shuffled.length >= 3) {
     $("#sw1").value = shuffled[0].id;
@@ -374,6 +422,74 @@ $("#randomStoryBtn").addEventListener("click", () => {
     $("#generateStoryBtn").click();
   }
 });
+
+// MODE IMMERSION
+function renderImmersionScreen() {
+  const scenarios = window.IMMERSION_SCENARIOS || [];
+  const grid = $("#immersionGrid");
+  const viewer = $("#scenarioViewer");
+
+  if (grid) {
+    grid.innerHTML = scenarios.map(sc => `
+      <div class="scenario-card" onclick="selectImmersionScenario('${sc.id}')">
+        <span class="scenario-icon">${sc.icon}</span>
+        <h3>${sc.title}</h3>
+        <p>${sc.desc}</p>
+      </div>
+    `).join("");
+  }
+
+  if (viewer) {
+    if (currentImmersionScenario) {
+      viewer.classList.remove("hidden");
+      $("#immersionTitle").textContent = `${currentImmersionScenario.icon} ${currentImmersionScenario.title}`;
+      $("#immersionDesc").textContent = currentImmersionScenario.desc;
+
+      const list = $("#dialogueList");
+      if (list) {
+        list.innerHTML = currentImmersionScenario.dialogue.map((line, idx) => `
+          <div class="dialogue-bubble ${line.role}">
+            <div class="dialogue-header">
+              <span class="dialogue-speaker">${line.speaker.toUpperCase()}</span>
+              <button class="neon-mini" onclick="speakCurrent('${line.audio.replace(/'/g, "\\'")}')">🔊 Écouter</button>
+            </div>
+            <div class="dialogue-text">${line.text}</div>
+            <div id="trans_${idx}" class="dialogue-translation hidden">${line.translation}</div>
+            <div class="dialogue-actions">
+              <button class="secondary-btn" onclick="toggleTranslation('trans_${idx}')" style="padding:6px 10px; font-size:12px;">👁️ Traduction</button>
+              <button class="primary-btn" onclick="practiceShadowingLine('${line.audio.replace(/'/g, "\\'")}')" style="padding:6px 10px; font-size:12px;">🗣️ Répéter (+10 XP)</button>
+            </div>
+          </div>
+        `).join("");
+      }
+    } else {
+      viewer.classList.add("hidden");
+    }
+  }
+}
+
+function selectImmersionScenario(id) {
+  const sc = (window.IMMERSION_SCENARIOS || []).find(s => s.id === id);
+  if (sc) {
+    currentImmersionScenario = sc;
+    renderImmersionScreen();
+    $("#scenarioViewer")?.scrollIntoView({ behavior: "smooth" });
+  }
+}
+window.selectImmersionScenario = selectImmersionScenario;
+
+function toggleTranslation(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("hidden");
+}
+window.toggleTranslation = toggleTranslation;
+
+function practiceShadowingLine(audioText) {
+  speakCurrent(audioText);
+  state.xp += 10;
+  saveState();
+}
+window.practiceShadowingLine = practiceShadowingLine;
 
 // Analytics Dashboard
 function renderAnalyticsScreen() {
@@ -387,11 +503,73 @@ function renderAnalyticsScreen() {
   });
 }
 
-// Importer & Exporter Modal
-$("#openImportBtn").addEventListener("click", () => $("#importerModal").classList.remove("hidden"));
-$("#closeImportBtn").addEventListener("click", () => $("#importerModal").classList.add("hidden"));
+// ➕ ADD WORD / NUOVA PAROLA MODAL
+function initAddWordModal() {
+  const modal = $("#addWordModal");
+  $("#openAddWordBtn")?.addEventListener("click", () => modal.classList.remove("hidden"));
+  $("#closeAddWordBtn")?.addEventListener("click", () => modal.classList.add("hidden"));
 
-$("#doImportBtn").addEventListener("click", () => {
+  $("#saveNewWordBtn")?.addEventListener("click", () => {
+    const word = ($("#newWord")?.value || "").trim().toUpperCase();
+    const meaning = ($("#newMeaning")?.value || "").trim();
+    const phonetic = ($("#newPhonetic")?.value || "").trim();
+    const hook = ($("#newHook")?.value || "").trim() || "Ancre visuelle forte";
+    const synonyms = ($("#newSynonyms")?.value || "").trim();
+    const antonyms = ($("#newAntonyms")?.value || "").trim();
+    const collocations = ($("#newCollocations")?.value || "").trim();
+    const example = ($("#newExample")?.value || "").trim() || `I use ${word} in context.`;
+    const story = ($("#newStory")?.value || "").trim() || example;
+
+    if (!word || !meaning) {
+      alert("Veuillez renseigner au moins le mot et sa signification.");
+      return;
+    }
+
+    const newObj = {
+      id: "custom_" + Date.now(),
+      word,
+      meaning,
+      phonetic: phonetic || `[${word.toLowerCase()}]`,
+      category: "USER VOCABULARY",
+      hook,
+      synonyms: synonyms ? synonyms.split(/\s*[·,;•]\s*/).filter(Boolean) : [],
+      antonyms: antonyms ? antonyms.split(/\s*[·,;•]\s*/).filter(Boolean) : [],
+      collocations: collocations ? collocations.split(/\s*[·,;•]\s*/).filter(Boolean) : [],
+      example,
+      story,
+      stage: 1,
+      srs: { reps: 0, interval: 0, easeFactor: 2.5, dueDate: Date.now() }
+    };
+
+    // Save to custom vocabulary storage
+    try {
+      const stored = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+      stored.push(newObj);
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(stored));
+    } catch (_) {}
+
+    state.vocab.unshift(newObj);
+    state.xp += 50;
+    currentIndex = 0;
+    saveState();
+
+    modal.classList.add("hidden");
+    // Clear inputs
+    ["#newWord", "#newMeaning", "#newPhonetic", "#newHook", "#newSynonyms", "#newAntonyms", "#newCollocations", "#newExample", "#newStory"].forEach(sel => {
+      const el = $(sel);
+      if (el) el.value = "";
+    });
+
+    alert(`🔥 Le mot "${word}" a été ajouté à ton Univers Anglais ! (+50 XP)`);
+    go("universe");
+  });
+}
+
+// Importer & Exporter Modal
+$("#openImportBtn")?.addEventListener("click", () => $("#importerModal").classList.remove("hidden"));
+$("#closeImportBtn")?.addEventListener("click", () => $("#importerModal").classList.add("hidden"));
+
+$("#doImportBtn")?.addEventListener("click", () => {
   const input = $("#importInput").value;
   const newItems = VocabImporter.parseText(input);
   const fb = $("#importFeedback");
@@ -416,7 +594,7 @@ $("#doImportBtn").addEventListener("click", () => {
   }
 });
 
-$("#doExportBtn").addEventListener("click", () => {
+$("#doExportBtn")?.addEventListener("click", () => {
   VocabImporter.exportJSON(state.vocab);
 });
 
@@ -432,9 +610,10 @@ function speakCurrent(customText) {
 window.speakCurrent = speakCurrent;
 
 // Reset Data
-$("#resetBtn").addEventListener("click", () => {
+$("#resetBtn")?.addEventListener("click", () => {
   if (confirm("Réinitialiser toute la progression et restaurer la bibliothèque par défaut ?")) {
     localStorage.removeItem("neonState_v2");
+    localStorage.removeItem(CUSTOM_KEY);
     location.reload();
   }
 });
@@ -443,10 +622,10 @@ $("#resetBtn").addEventListener("click", () => {
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredPrompt = e;
-  $("#installBtn").classList.remove("hidden");
+  $("#installBtn")?.classList.remove("hidden");
 });
 
-$("#installBtn").addEventListener("click", async () => {
+$("#installBtn")?.addEventListener("click", async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   deferredPrompt = null;
@@ -454,7 +633,7 @@ $("#installBtn").addEventListener("click", async () => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js?v=0.2.2").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=0.3.0").then(reg => {
       reg.addEventListener("updatefound", () => {
         const newWorker = reg.installing;
         if (newWorker) {
@@ -471,5 +650,6 @@ if ("serviceWorker" in navigator) {
 }
 
 // Initial Kickoff
+initAddWordModal();
 updateHeaderStats();
 renderWord();

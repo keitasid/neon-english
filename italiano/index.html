@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="NEON ITALIANO">
-  <link rel="manifest" href="manifest.webmanifest?v=1.9.3">
-  <link rel="stylesheet" href="styles.css?v=1.9.3">
-  <title>NEON ITALIANO v1.9.3</title>
+  <link rel="manifest" href="manifest.webmanifest?v=2.0.0">
+  <link rel="stylesheet" href="styles.css?v=2.0.0">
+  <title>NEON ITALIANO v2.0.0</title>
 </head>
 <body>
   <div class="app">
@@ -18,10 +18,11 @@
         <div class="logo">N</div>
         <div>
           <b>NEON<br>ITALIANO</b>
-          <small>A2 → B2 · Impara collegando</small>
+          <small>v2.0.0 · Impara collegando</small>
         </div>
       </div>
       <div class="topbar-actions">
+        <button id="openAddWordBtn" class="neon-pill-btn" title="Aggiungi parola">➕ Parola</button>
         <button id="srsDueBtn" class="neon-pill-btn" title="Révisions SRS">⚡ SRS <span id="due" class="badge">0</span></button>
         <button id="openImportBtn" class="icon-btn" title="Importer / Exporter le vocabulaire">📥</button>
         <button id="installBtn" class="ghost hidden">＋ Installer</button>
@@ -32,9 +33,9 @@
     <main>
       <!-- HOME SCREEN -->
       <section id="home" class="screen active">
-        <div class="eyebrow">IL TUO UNIVERSO ITALIANO · V1.9.3</div>
+        <div class="eyebrow">IL TUO UNIVERSO ITALIANO · V2.0.0</div>
         <h1>Fai <em>restare</em><br>le parole.</h1>
-        <p class="lead">Associations → Mind Map → SRS → Storytelling → Production → Shadowing.</p>
+        <p class="lead">Associations → Mind Map → SRS → Immersion → Production → Shadowing.</p>
 
         <div class="brain">
           <span>🧠</span>
@@ -64,10 +65,15 @@
             <b>PAROLE</b>
             <small>Vocabulaire actif</small>
           </button>
+          <button data-go="immersion-screen">
+            <span>🌍</span>
+            <b>IMMERSIONE</b>
+            <small>7 Scenari di vita reale</small>
+          </button>
           <button data-go="map">
             <span>🧠</span>
             <b>MIND MAP</b>
-            <small>Réseau animé interactif</small>
+            <small>Réseau 2D animé</small>
           </button>
           <button data-go="srs">
             <span>🔄</span>
@@ -88,6 +94,11 @@
             <span>🎭</span>
             <b>STORIA</b>
             <small>Contexte & récits</small>
+          </button>
+          <button data-go="statsScreen">
+            <span>📊</span>
+            <b>ANALYTICS</b>
+            <small>Niveaux L1-L4 & erreurs</small>
           </button>
         </div>
 
@@ -132,7 +143,30 @@
         </div>
       </section>
 
-      <!-- MIND MAP SCREEN (2D INTERACTIVE CANVAS) -->
+      <!-- IMMERSION SCREEN -->
+      <section id="immersion-screen" class="screen">
+        <div class="top">
+          <button data-go="home">←</button>
+          <div>
+            <span>SITUAZIONI DI VITA REALE</span>
+            <h2>MODE IMMERSIONE</h2>
+          </div>
+        </div>
+
+        <p class="hint">Scegli uno scenario per esercitarti in dialoghi realistici con audio e shadowing :</p>
+        <div id="immersionGrid" class="immersion-grid"></div>
+
+        <div id="scenarioViewer" class="panel hidden" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="immersionTitle" style="margin:0; font-size:18px;"></h3>
+            <span class="neon-mini">🗣️ Shadowing Pronto</span>
+          </div>
+          <p id="immersionDesc" class="hint" style="margin:6px 0 16px;"></p>
+          <div id="dialogueList" class="dialogue-list"></div>
+        </div>
+      </section>
+
+      <!-- MIND MAP SCREEN (2D DYNAMIC CANVAS) -->
       <section id="map" class="screen">
         <div class="top">
           <button data-go="home">←</button>
@@ -228,17 +262,11 @@
         <div class="top">
           <button data-go="home">←</button>
           <div>
-            <span>PROGRESSI</span>
-            <h2>STATISTICHE</h2>
+            <span>PROGRESSI & ERRORI</span>
+            <h2>ANALYTICS DASHBOARD</h2>
           </div>
         </div>
-        <div class="panel">
-          <h3 id="statsTitle"></h3>
-          <div class="bar"><i id="bar"></i></div>
-          <p id="statsText"></p>
-          <hr>
-          <p>🎯 Objectif recommandé : 10–20 minutes par jour, avec production orale chaque jour.</p>
-        </div>
+        <div id="analyticsContent" class="analytics-wrapper"></div>
       </section>
     </main>
 
@@ -246,23 +274,83 @@
     <nav class="bottom-nav">
       <button data-go="home" class="active">⌂<small>Home</small></button>
       <button data-go="learn">✦<small>Parole</small></button>
+      <button data-go="immersion-screen">🌍<small>Immersione</small></button>
       <button data-go="map">🧠<small>Map</small></button>
       <button data-go="srs">🔄<small>SRS</small></button>
       <button data-go="blurt">🔥<small>Blurt</small></button>
-      <button data-go="hunt">🎮<small>Hunt</small></button>
       <button data-go="statsScreen">📊<small>Stats</small></button>
     </nav>
+  </div>
+
+  <!-- ➕ NUOVA PAROLA MODAL -->
+  <div id="addWordModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>➕ Aggiungi Nuova Parola (Approccio 1 & 3)</h3>
+        <button id="closeAddWordBtn" class="icon-btn">✕</button>
+      </div>
+      <p class="hint" style="font-size:13px; margin-bottom:14px;">
+        La parola sarà inserita istantaneamente nella Mappa Mentale, SRS, Blurting, Shadowing e Statistiche.
+      </p>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>PAROLA ITALIANA *</label>
+          <input id="newWord" class="form-input" placeholder="es: SBROGLIARSI" />
+        </div>
+        <div class="form-group">
+          <label>TRADUZIONE FRANCESE *</label>
+          <input id="newTranslation" class="form-input" placeholder="es: se débrouiller / se sortir d'affaire" />
+        </div>
+        <div class="form-group">
+          <label>PRONUNCIA (Fonetica)</label>
+          <input id="newPhonetic" class="form-input" placeholder="es: [zbroʎˈʎarsi]" />
+        </div>
+        <div class="form-group">
+          <label>SINONIMI (separati da virgola)</label>
+          <input id="newSynonyms" class="form-input" placeholder="es: cavarsela, sbrigarsi, arrangiarsi" />
+        </div>
+        <div class="form-group">
+          <label>CONTRARI (separati da virgola)</label>
+          <input id="newAntonyms" class="form-input" placeholder="es: bloccarsi, impantanarsi" />
+        </div>
+        <div class="form-group">
+          <label>COLLOCAZIONI CHIAVE</label>
+          <input id="newCollocations" class="form-input" placeholder="es: sbrogliarsi da solo, sbrogliarsi la vita" />
+        </div>
+        <div class="form-group full">
+          <label>🧠 MEMORY HOOK (Approccio 1 : immagine visiva o suono)</label>
+          <input id="newHook" class="form-input" placeholder="es: Immagina di districare una matassa di fili ingarbugliati." />
+        </div>
+        <div class="form-group full">
+          <label>💬 FRASE D'ESEMPIO</label>
+          <input id="newExample" class="form-input" placeholder="es: Non preoccuparti, so come sbrogliarmi in queste situazioni." />
+        </div>
+        <div class="form-group full">
+          <label>🇫🇷 TRADUZIONE FRASE D'ESEMPIO</label>
+          <input id="newExampleFr" class="form-input" placeholder="es: Ne t'inquiète pas, je sais comment me débrouiller dans ces situations." />
+        </div>
+        <div class="form-group full">
+          <label>🎭 MINI-STORIA / CONTESTO</label>
+          <textarea id="newStory" class="form-textarea" placeholder="es: Dopo ore di confusione in aeroporto, è riuscito a sbrogliarsi e trovare il volo giusto."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="saveNewWordBtn" class="continue" style="margin-bottom:0; justify-content:center;">💾 Salva nel mio Universo</button>
+      </div>
+    </div>
   </div>
 
   <!-- IMPORTER / EXPORTER MODAL -->
   <div id="importerModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-head">
-        <h3>📥 Import / Export Vocabulaire</h3>
+        <h3>📥 Import / Export Vocabolario</h3>
         <button id="closeImportBtn" class="icon-btn">✕</button>
       </div>
-      <p class="hint">Ajoute une fiche sous la forme <code>MOT | Traduction | Hook | Synonymes | Collocations | Exemple</code>, une par ligne, ou colle un JSON exporté.</p>
-      <textarea id="importInput" placeholder="SBROGLIARSI | se débrouiller / se sortir d'une situation | Imagine... | cavarsela | sbrigarsi, arrangiarsi | Devo sbrigarmi."></textarea>
+      <p class="hint">Incolla una scheda nel formato <code>PAROLA | Traduzione | Hook | Sinonimi | Collocazioni | Esempio</code>, oppure un JSON esportato.</p>
+      <textarea id="importInput" placeholder="SBROGLIARSI | se débrouiller | Immagina... | cavarsela | sbrigarsi | Devo sbrigarmi."></textarea>
       <div class="modal-actions">
         <button id="doImportBtn" class="continue" style="margin-bottom:0">⚡ IMPORTER</button>
         <button id="doExportBtn" class="neon-pill-btn">📤 EXPORTER JSON</button>
@@ -272,8 +360,10 @@
   </div>
 
   <!-- SCRIPTS -->
-  <script src="vocabulary.js?v=1.9.3"></script>
-  <script src="mindmap.js?v=1.9.3"></script>
-  <script src="app.js?v=1.9.3"></script>
+  <script src="vocabulary.js?v=2.0.0"></script>
+  <script src="immersion_scenarios.js?v=2.0.0"></script>
+  <script src="mindmap.js?v=2.0.0"></script>
+  <script src="analytics.js?v=2.0.0"></script>
+  <script src="app.js?v=2.0.0"></script>
 </body>
 </html>

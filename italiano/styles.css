@@ -178,7 +178,7 @@ main {
 }
 
 /* BRAIN CARD */
-.brain, .panel, .card {
+.brain, .panel, .card, .scenario-card, .dialogue-bubble {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -389,22 +389,138 @@ main {
   line-height: 1.4;
 }
 
+/* IMMERSION SCREEN */
+.immersion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.scenario-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+  background: var(--panel);
+}
+.scenario-card:hover { transform: translateY(-2px); border-color: var(--neon); }
+.scenario-icon { font-size: 32px; }
+.scenario-card h3 { margin: 0; font-size: 17px; color: var(--text); }
+.scenario-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+
+.dialogue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+.dialogue-bubble {
+  padding: 16px;
+  position: relative;
+  background: var(--panel);
+}
+.dialogue-bubble.local {
+  border-left: 4px solid var(--border);
+}
+.dialogue-bubble.user {
+  border-left: 4px solid var(--neon);
+  background: linear-gradient(90deg, rgba(0, 230, 160, 0.06), transparent);
+}
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.dialogue-speaker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+}
+.dialogue-text {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  font-weight: 600;
+}
+.dialogue-translation {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.dialogue-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ANALYTICS */
+.analytics-wrapper { display: flex; flex-direction: column; gap: 16px; }
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+.stat-box { text-align: center; }
+.stat-box .value { font-size: 28px; font-weight: 900; margin: 3px 0; color: var(--text); }
+.stat-box small { color: var(--muted); font-size: 10.5px; }
+
+.mastery-section, .weak-section { padding: 18px; }
+.mastery-section h3, .weak-section h3 { margin-top: 0; font-size: 17px; }
+
+.mastery-bar-container {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 14px 0;
+}
+.mastery-bar { height: 100%; transition: width 0.3s; }
+.mastery-bar.stage-1 { background: #507C6D; }
+.mastery-bar.stage-2 { background: var(--gold); }
+.mastery-bar.stage-3 { background: #00b880; }
+.mastery-bar.stage-4 { background: var(--neon); }
+
+.mastery-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.weak-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.weak-pill {
+  padding: 6px 10px;
+  background: rgba(255, 90, 95, 0.12);
+  border: 1px solid rgba(255, 90, 95, 0.3);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+}
+
 /* SRS & BLURT & HUNT */
 .big-number { font-size: 64px; color: var(--neon); font-weight: 900; }
 .panel.center { text-align: center; }
-.panel textarea {
+.panel textarea, .form-input, .form-textarea {
   width: 100%;
-  min-height: 160px;
   background: #08100e;
   color: white;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  margin: 14px 0;
-  resize: vertical;
   font-size: 14px;
-  line-height: 1.5;
 }
+.panel textarea { min-height: 160px; margin: 14px 0; resize: vertical; line-height: 1.5; }
+.form-input { height: 44px; }
+.form-textarea { min-height: 80px; resize: vertical; }
 
 .choices {
   display: grid;
@@ -418,62 +534,51 @@ main {
   font-weight: 700;
 }
 
-.bar {
-  height: 12px;
-  background: #26302c;
-  border-radius: 10px;
-  overflow: hidden;
-  margin: 16px 0;
-}
-.bar i {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--neon);
-  transition: width 0.3s;
-}
-
-hr {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 20px 0;
-}
-
 /* MODAL */
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.84);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: grid;
   place-items: center;
   padding: 16px;
 }
 .modal-card {
   width: 100%;
-  max-width: 550px;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 20px;
+  padding: 22px;
   box-shadow: var(--shadow);
 }
-.modal-head { display: flex; justify-content: space-between; align-items: center; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .modal-head h3 { margin: 0; font-size: 18px; }
-.modal-card textarea {
-  width: 100%;
-  min-height: 160px;
-  background: #08100e;
-  color: white;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px;
-  margin: 12px 0;
-  resize: vertical;
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+/* FORM GRID */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-.modal-actions { display: flex; gap: 8px; margin-top: 10px; }
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.form-group.full { grid-column: 1 / -1; }
+.form-group label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
 
 /* BOTTOM NAV — 7 TABS PERFECT FIT FOR IPHONE & ANDROID */
 nav.bottom-nav {
@@ -541,4 +646,5 @@ nav.bottom-nav button.active {
   .grade > div { grid-template-columns: 1fr 1fr; }
   .choices { grid-template-columns: 1fr; }
   .canvas-container { height: 420px; }
+  .form-grid { grid-template-columns: 1fr; }
 }

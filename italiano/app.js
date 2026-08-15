@@ -3,14 +3,25 @@
 
   // Load custom imported vocabulary if present
   const CUSTOM_KEY = 'neonItaliano_customVocab_v1';
+  let customVocab = [];
   try {
-    const custom = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
-    if (Array.isArray(custom) && custom.length) {
-      window.ITALIANO_VOCAB = [...(window.ITALIANO_VOCAB || []), ...custom];
-    }
-  } catch (_) {}
+    customVocab = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
+  } catch (_) {
+    customVocab = [];
+  }
 
-  const VOCAB = Array.isArray(window.ITALIANO_VOCAB) ? window.ITALIANO_VOCAB : [];
+  const initialVocab = Array.isArray(window.ITALIANO_VOCAB) ? [...window.ITALIANO_VOCAB] : [];
+  if (Array.isArray(customVocab) && customVocab.length > 0) {
+    const existingWords = new Set(initialVocab.map(w => String(w.word).toUpperCase()));
+    customVocab.forEach(item => {
+      if (!existingWords.has(String(item.word).toUpperCase())) {
+        initialVocab.unshift(item);
+      }
+    });
+  }
+  window.ITALIANO_VOCAB = initialVocab;
+  const VOCAB = window.ITALIANO_VOCAB;
+
   const KEY = 'neonItaliano_v1';
   const DAY = 86400000, MINUTE = 60000;
   const defaultState = {
@@ -44,6 +55,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   let mindmapInstance = null;
+  let currentImmersionScenario = (window.ITALIANO_IMMERSION_SCENARIOS && window.ITALIANO_IMMERSION_SCENARIOS[0]) || null;
 
   function updateStreak() {
     const t = today();
@@ -79,6 +91,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (screen === 'learn') renderLearn();
+    if (screen === 'immersion-screen') renderImmersionScreen();
     if (screen === 'map') renderMap();
     if (screen === 'srs') renderSrs();
     if (screen === 'blurt') renderBlurt();
@@ -87,6 +100,7 @@
     if (screen === 'statsScreen') renderStats();
     renderHeader();
   }
+  window.show = show;
 
   function renderHeader() {
     const due = dueCount();
@@ -326,6 +340,75 @@
     }
   }
 
+  // MODE IMMERSION (ITALIAN SCENARIOS)
+  function renderImmersionScreen() {
+    const scenarios = window.ITALIANO_IMMERSION_SCENARIOS || [];
+    const grid = $('#immersionGrid');
+    const viewer = $('#scenarioViewer');
+
+    if (grid) {
+      grid.innerHTML = scenarios.map(sc => `
+        <div class="scenario-card" onclick="selectImmersionScenario('${sc.id}')">
+          <span class="scenario-icon">${sc.icon}</span>
+          <h3>${sc.title}</h3>
+          <p>${sc.desc}</p>
+        </div>
+      `).join('');
+    }
+
+    if (viewer) {
+      if (currentImmersionScenario) {
+        viewer.classList.remove('hidden');
+        $('#immersionTitle').textContent = `${currentImmersionScenario.icon} ${currentImmersionScenario.title}`;
+        $('#immersionDesc').textContent = currentImmersionScenario.desc;
+
+        const list = $('#dialogueList');
+        if (list) {
+          list.innerHTML = currentImmersionScenario.dialogue.map((line, idx) => `
+            <div class="dialogue-bubble ${line.role}">
+              <div class="dialogue-header">
+                <span class="dialogue-speaker">${line.speaker.toUpperCase()}</span>
+                <button class="neon-mini" onclick="speakItalian('${line.audio.replace(/'/g, "\\'")}')">🔊 Ascolta</button>
+              </div>
+              <div class="dialogue-text">${line.text}</div>
+              <div id="trans_${idx}" class="dialogue-translation hidden">${line.translation}</div>
+              <div class="dialogue-actions">
+                <button class="continue" onclick="toggleTranslation('trans_${idx}')" style="padding:6px 10px; font-size:12px; margin-bottom:0; width:auto;">👁️ Traduzione</button>
+                <button class="neon-mini" onclick="practiceShadowingLine('${line.audio.replace(/'/g, "\\'")}')">🗣️ Ripeti (+10 XP)</button>
+              </div>
+            </div>
+          `).join('');
+        }
+      } else {
+        viewer.classList.add('hidden');
+      }
+    }
+  }
+
+  function selectImmersionScenario(id) {
+    const sc = (window.ITALIANO_IMMERSION_SCENARIOS || []).find(s => s.id === id);
+    if (sc) {
+      currentImmersionScenario = sc;
+      renderImmersionScreen();
+      $('#scenarioViewer')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+  window.selectImmersionScenario = selectImmersionScenario;
+
+  function toggleTranslation(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden');
+  }
+  window.toggleTranslation = toggleTranslation;
+
+  function practiceShadowingLine(audioText) {
+    speak(audioText, 0.88);
+    state.xp += 10;
+    save();
+    renderHeader();
+  }
+  window.practiceShadowingLine = practiceShadowingLine;
+
   function renderSrs() {
     const due = dueCount(), fresh = newCount();
     if ($('#srsDue')) $('#srsDue').textContent = due;
@@ -423,7 +506,7 @@
         if (ok) state.stats.correct++;
         save();
         if ($('#huntFeedback')) {
-          $('#huntFeedback').innerHTML = ok ? '<p style="color:var(--neon);font-weight:bold;">🟢 Correct ! +15 XP</p>' : `<p style="color:var(--coral);font-weight:bold;">🔴 La réponse était <strong>${esc(answer.word)}</strong>.</p>`;
+          $('#huntFeedback').innerHTML = ok ? '<p style="color:var(--neon);font-weight:bold;">🟢 Corretto ! +15 XP</p>' : `<p style="color:var(--coral);font-weight:bold;">🔴 La risposta era <strong>${esc(answer.word)}</strong>.</p>`;
         }
         renderHeader();
       }));
@@ -455,18 +538,77 @@
   window.speakItalian = speak;
 
   function renderStats() {
-    const total = VOCAB.length, known = Object.values(state.known).filter(Boolean).length, pct = total ? Math.round(known / total * 100) : 0;
-    if ($('#statsTitle')) $('#statsTitle').textContent = `${known} / ${total} mots actifs maîtrisés`;
-    if ($('#bar')) $('#bar').style.width = pct + '%';
-    const rs = Object.values(state.reviews), avgEase = rs.length ? (rs.reduce((a, r) => a + (r.ease || 2.5), 0) / rs.length).toFixed(2) : '—';
-    if ($('#statsText')) {
-      $('#statsText').innerHTML = `
-        ${pct}% du parcours initial. ${state.stats.seen} évaluations SRS, ${state.stats.blurts} blurtings, ${state.stats.productions} productions orales et ${state.stats.stories} stories.<br><br>
-        🔄 <strong>Intervalle moyen :</strong> ${rs.length ? (rs.reduce((a, r) => a + (r.interval || 0), 0) / rs.length).toFixed(1) + ' jours' : '—'}<br>
-        🧠 <strong>Facilité moyenne :</strong> ${avgEase}<br>
-        📅 <strong>À revoir :</strong> ${dueCount()} · 🆕 <strong>Nouveaux :</strong> ${newCount()}
-      `;
+    if (window.ItalianAnalytics) {
+      const stats = window.ItalianAnalytics.computeStats(VOCAB, state);
+      window.ItalianAnalytics.renderDashboard('analyticsContent', stats, (weakWords) => {
+        if (weakWords.length > 0) {
+          const firstWeakIdx = VOCAB.findIndex(w => w.word === weakWords[0].word);
+          if (firstWeakIdx !== -1) state.current = firstWeakIdx;
+          show('learn');
+        }
+      });
     }
+  }
+
+  // ➕ NUOVA PAROLA MODAL
+  function initAddWordModal() {
+    const modal = $('#addWordModal');
+    $('#openAddWordBtn')?.addEventListener('click', () => modal.classList.remove('hidden'));
+    $('#closeAddWordBtn')?.addEventListener('click', () => modal.classList.add('hidden'));
+
+    $('#saveNewWordBtn')?.addEventListener('click', () => {
+      const word = ($('#newWord')?.value || '').trim().toUpperCase();
+      const translation = ($('#newTranslation')?.value || '').trim();
+      const phonetic = ($('#newPhonetic')?.value || '').trim();
+      const hook = ($('#newHook')?.value || '').trim() || 'Associa a un’immagine forte.';
+      const synonyms = ($('#newSynonyms')?.value || '').trim();
+      const antonyms = ($('#newAntonyms')?.value || '').trim();
+      const collocations = ($('#newCollocations')?.value || '').trim();
+      const example = ($('#newExample')?.value || '').trim() || `Uso ${word} in contesto.`;
+      const exampleFr = ($('#newExampleFr')?.value || '').trim() || '';
+      const story = ($('#newStory')?.value || '').trim() || example;
+
+      if (!word || !translation) {
+        alert('Inserisci almeno la parola e la sua traduzione.');
+        return;
+      }
+
+      const newObj = {
+        word,
+        translation,
+        phonetic: phonetic || `[${word.toLowerCase()}]`,
+        level: 'B1',
+        hook,
+        synonyms,
+        antonyms,
+        collocations,
+        example,
+        exampleFr: exampleFr || translation,
+        story,
+        storyFr: exampleFr || translation
+      };
+
+      // Save in custom storage
+      try {
+        const stored = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
+        stored.unshift(newObj);
+        localStorage.setItem(CUSTOM_KEY, JSON.stringify(stored));
+      } catch (_) {}
+
+      VOCAB.unshift(newObj);
+      state.current = 0;
+      state.xp += 50;
+      save();
+
+      modal.classList.add('hidden');
+      ['#newWord', '#newTranslation', '#newPhonetic', '#newHook', '#newSynonyms', '#newAntonyms', '#newCollocations', '#newExample', '#newExampleFr', '#newStory'].forEach(sel => {
+        const el = $(sel);
+        if (el) el.value = '';
+      });
+
+      alert(`🔥 La parola "${word}" è stata aggiunta al tuo Universo Italiano! (+50 XP)`);
+      show('learn');
+    });
   }
 
   // Modal Importer & Reset
@@ -483,14 +625,14 @@
       a.click();
       URL.revokeObjectURL(a.href);
       if (feedback) {
-        feedback.textContent = `📤 Export créé : ${VOCAB.length} fiches.`;
+        feedback.textContent = `📤 Export creato : ${VOCAB.length} schede.`;
       }
     });
 
     $('#doImportBtn')?.addEventListener('click', () => {
       try {
         const raw = input.value.trim();
-        if (!raw) throw Error('Colle du texte ou du JSON.');
+        if (!raw) throw Error('Incolla testo o JSON.');
         let arr;
         if (raw.startsWith('[') || raw.startsWith('{')) {
           arr = JSON.parse(raw);
@@ -501,7 +643,7 @@
             return {
               word: p[0],
               translation: p[1] || '',
-              hook: p[2] || 'Associe ce mot à une image forte.',
+              hook: p[2] || 'Associa a un’immagine forte.',
               synonyms: p[3] || '',
               antonyms: '',
               collocations: p[4] || '',
@@ -516,13 +658,13 @@
         }
 
         const clean = arr.filter(x => x.word && x.translation);
-        if (!clean.length) throw Error('Format invalide ou vide.');
+        if (!clean.length) throw Error('Formato vuoto o non valido.');
 
         const old = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
         const map = new Map([...old, ...clean].map(x => [String(x.word).toUpperCase(), x]));
         localStorage.setItem(CUSTOM_KEY, JSON.stringify([...map.values()]));
 
-        if (feedback) feedback.textContent = `⚡ ${clean.length} fiche(s) importée(s). Rechargement...`;
+        if (feedback) feedback.textContent = `⚡ ${clean.length} scheda(e) importata(e). Ricaricamento...`;
         setTimeout(() => location.reload(), 1200);
       } catch (err) {
         if (feedback) feedback.textContent = `❌ ${err.message}`;
@@ -530,7 +672,7 @@
     });
 
     $('#resetBtn')?.addEventListener('click', () => {
-      if (confirm('Réinitialiser toute la progression SRS, XP, Blurting et statistiques ? Le vocabulaire personnalisé sera conservé.')) {
+      if (confirm('Reimpostare tutti i progressi SRS, XP, Blurting e statistiche? Il vocabolario personalizzato sarà conservato.')) {
         localStorage.removeItem(KEY);
         location.reload();
       }
@@ -539,6 +681,7 @@
 
   function bind() {
     updateStreak();
+    initAddWordModal();
     initModals();
 
     $$('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
@@ -569,13 +712,13 @@
   // Service Worker Registration
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=1.9.3').then(reg => {
+      navigator.serviceWorker.register('./sw.js?v=2.0.0').then(reg => {
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[PWA Italiano] Nouvelle version disponible, rechargement...');
+                console.log('[PWA Italiano] Nuova versione disponibile, ricaricamento...');
                 window.location.reload();
               }
             });
